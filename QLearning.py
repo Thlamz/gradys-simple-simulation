@@ -104,7 +104,7 @@ class QLearning(Controller):
         if simulation_step == 0:
             return 0
         highest_throughput = (MISSION_SIZE - 1) * (simulation_step / SENSOR_GENERATION_FREQUENCY)
-        return -(ground_station['packets'] / simulation_step) / highest_throughput
+        return -ground_station['packets'] / highest_throughput
 
     def get_control(self,
                     simulation_step: int,
