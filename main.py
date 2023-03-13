@@ -66,6 +66,8 @@ def run_simulation(controller: Controller, step_by_step: bool = False, plots: bo
 
 
 if __name__ == '__main__':
+    print(f"Maximum possible throughput {(MISSION_SIZE - 1) * (1 / SENSOR_GENERATION_FREQUENCY)}")
+
     print("Simulating DADCA:")
     run_simulation(Dadca(), plots=False)
 
