@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import numpy.random
@@ -18,11 +19,11 @@ class QLearning(Controller):
     training: bool
     """ Training flag. If set to false doesn't try to update the Q Table """
 
-    qtable_file: Path | None = None
+    qtable_file: Optional[Path] = None
     """ Path where a Q Table pickle is located. If set will try to load the Q Table at initialization """
 
     # Variables updated during execution
-    last_state: State | None
+    last_state: Optional[State]
     epsilon: float
     q_table: np.ndarray[float]
 

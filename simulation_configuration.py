@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TypedDict, Callable
+from typing import TypedDict, Callable, Union
 
 
 class SimulationConfiguration(TypedDict):
@@ -18,7 +18,7 @@ class SimulationConfiguration(TypedDict):
     learning_rate: float
     gamma: float
     qtable_initialization_value: float
-    qtable_file: Path | None
+    qtable_file: Union[Path, None]
 
     # Simulation parameters
     training: bool

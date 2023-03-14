@@ -1,6 +1,6 @@
 import itertools
 from enum import Enum
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 from simulation_configuration import SimulationConfiguration
 
@@ -19,8 +19,8 @@ class Control(NamedTuple):
 
 
 class Environment:
-    state_id: dict[State | int, State | int]
-    control_id: dict[Control | int, Control | int]
+    state_id: dict[Union[State, int], Union[State, int]]
+    control_id: dict[Union[Control, int], Union[Control, int]]
 
     def __init__(self, configuration: SimulationConfiguration):
         self.configuration = configuration
