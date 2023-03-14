@@ -1,12 +1,17 @@
+import itertools
+import json
+import multiprocessing
+
 from tqdm import tqdm
 
+from Dadca import Dadca
 from QLearning import QLearning
 from simulation import Simulation
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from simulation_configuration import SimulationConfiguration
+from simulation_configuration import SimulationConfiguration, SimulationResults
 
 
 def get_default_configuration() -> SimulationConfiguration:
@@ -24,22 +29,24 @@ def get_default_configuration() -> SimulationConfiguration:
         'qtable_file': None,
         'training': True,
         'step_by_step': False,
-        'plots': False
+        'plots': False,
+        'verbose': True
     }
 
 
-def run_simulation(configuration: SimulationConfiguration, process_index: int = 0):
+def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
     simulation = Simulation(configuration)
 
     throughputs = []
     throughput_sum = 0
     agent_positions = {index: [] for index in range(configuration['num_agents'])}
 
-    print(f"Maximum possible throughput {(configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])}")
+    if configuration['verbose']:
+        print(f"Maximum possible throughput {(configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])}")
 
     iterator = range(configuration['maximum_simulation_steps'])
-    if not configuration['step_by_step']:
-        iterator = tqdm(iterator, position=process_index)
+    if not configuration['step_by_step'] and configuration['verbose']:
+        iterator = tqdm(iterator)
 
     # Simulation iterations
     for _ in iterator:
@@ -78,6 +85,39 @@ def run_simulation(configuration: SimulationConfiguration, process_index: int = 
         sns.lineplot().set(title='Agent Positions')
         plt.show()
 
-    print(f"Simulation steps: {simulation.simulation_step}")
-    print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
-    print(f"Last throughput: {simulation.ground_station['packets'] / simulation.simulation_step}")
+    if configuration['verbose']:
+        print(f"Simulation steps: {simulation.simulation_step}")
+        print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
+        print(f"Last throughput: {simulation.ground_station['packets'] / simulation.simulation_step}")
+    return {
+        'avg_throughput': throughput_sum / simulation.simulation_step
+    }
+
+
+def run_permutation(argument):
+    index, permutation = argument
+    num_agent, mission_size, controller = permutation
+    config = get_default_configuration()
+    config['num_agents'] = num_agent
+    config['mission_size'] = mission_size
+    config['controller'] = controller
+    config['verbose'] = False
+
+    return config, run_simulation(config)
+
+
+if __name__ == '__main__':
+    num_agents = [2, 4, 8, 16]
+    mission_sizes = [10, 40, 60, 100]
+    controllers = [Dadca, QLearning]
+
+    permutations = itertools.product(num_agents, mission_sizes, controllers)
+
+    with multiprocessing.Pool() as pool:
+        result = pool.map(run_permutation, enumerate(permutations))
+        print(result)
+
+        with open("./results.json", "w") as file:
+            json.dumps(result, indent=2)
+
+

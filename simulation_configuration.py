@@ -24,3 +24,8 @@ class SimulationConfiguration(TypedDict):
     training: bool
     step_by_step: bool
     plots: bool
+    verbose: bool
+
+
+class SimulationResults(TypedDict):
+    avg_throughput: float

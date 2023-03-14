@@ -57,7 +57,9 @@ class QLearning(Controller):
             possible_states = self.configuration['mission_size'] ** self.configuration['num_agents']
             possible_actions = len(_control_choices) ** self.configuration['num_agents']
             self.q_table = np.full((possible_states, possible_actions), self.configuration['qtable_initialization_value'])
-        print(f"QTable size: {self.q_table.size}")
+
+        if configuration['verbose']:
+            print(f"QTable size: {self.q_table.size}")
 
         self.last_state = None
         self.total_cost = 0
