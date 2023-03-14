@@ -64,7 +64,8 @@ class Simulation:
                 continue
 
             for index2, agent2 in enumerate(self.agents):
-                if self.U.mobility[index2] == MobilityCommand.REVERSE:
+                if self.U.mobility[index2] == MobilityCommand.REVERSE \
+                        or self.X.mobility[index1] > self.X.mobility[index2]:
                     continue
 
                 if self.X.mobility[index2] <= (self.X.mobility[index1] + 2):
