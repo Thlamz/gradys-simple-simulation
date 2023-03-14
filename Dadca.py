@@ -3,9 +3,8 @@ import math
 from typing import TypedDict
 
 from controller import Controller
-from environment import State, Control, MobilityCommand
+from environment import State, Control, MobilityCommand, Environment
 from node import Node
-from simulation_parameters import MISSION_SIZE, NUM_AGENTS
 
 
 class DadcaCommand(TypedDict):
@@ -17,9 +16,9 @@ class Dadca(Controller):
     agent_neighbours: list[list[int, int]]
     agent_commands: dict[int, DadcaCommand]
 
-    def __init__(self):
-        super().__init__()
-        self.agent_neighbours = [[0, 0] for _ in range(NUM_AGENTS)]
+    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
+        super().__init__(configuration, environment)
+        self.agent_neighbours = [[0, 0] for _ in range(self.configuration['num_agents'])]
         self.agent_commands = {}
 
     def get_control(self,
@@ -58,7 +57,7 @@ class Dadca(Controller):
 
             interaction_boundary = \
                 (self.agent_neighbours[left_index][0] + 1) / (sum(self.agent_neighbours[left_index]) + 1)
-            destination = math.floor(interaction_boundary * MISSION_SIZE)
+            destination = math.floor(interaction_boundary * self.configuration['mission_size'])
             self.agent_commands[left_index] = {
                 "destination": destination,
                 "proceed": MobilityCommand.REVERSE
@@ -82,7 +81,7 @@ class Dadca(Controller):
         for index, agent in enumerate(agents):
             if current_state.mobility[index] == 0:
                 new_mobility_commands[index] = MobilityCommand.FORWARDS
-            elif current_state.mobility[index] == MISSION_SIZE - 1:
+            elif current_state.mobility[index] == self.configuration['mission_size'] - 1:
                 new_mobility_commands[index] = MobilityCommand.REVERSE
 
         return Control(mobility=tuple(new_mobility_commands))

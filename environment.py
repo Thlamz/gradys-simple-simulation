@@ -1,18 +1,12 @@
 import itertools
 from enum import Enum
-from typing import NamedTuple, Annotated
+from typing import NamedTuple
 
-from simulation_parameters import MISSION_SIZE, NUM_AGENTS
+from simulation_configuration import SimulationConfiguration
 
 
 class State(NamedTuple):
     mobility: tuple[int, ...]
-
-
-STATE_ID: dict[State | int, State | int] = {}
-for index, permutation in enumerate(itertools.product([i for i in range(MISSION_SIZE)], repeat=NUM_AGENTS)):
-    STATE_ID[index] = State(mobility=permutation)
-    STATE_ID[State(mobility=permutation)] = index
 
 
 class MobilityCommand(Enum):
@@ -24,30 +18,46 @@ class Control(NamedTuple):
     mobility: tuple[MobilityCommand, ...]
 
 
-CONTROL_ID: dict[Control | int, Control | int] = {}
-for index, permutation in enumerate(itertools.product([MobilityCommand.FORWARDS, MobilityCommand.REVERSE],
-                                                      repeat=NUM_AGENTS)):
-    CONTROL_ID[index] = Control(mobility=permutation)
-    CONTROL_ID[Control(mobility=permutation)] = index
+class Environment:
+    state_id: dict[State | int, State | int]
+    control_id: dict[Control | int, Control | int]
 
+    def __init__(self, configuration: SimulationConfiguration):
+        self.configuration = configuration
 
-def validate_control(current_state: State, control: Control) -> bool:
-    for position, command in zip(current_state.mobility, control.mobility):
-        if position == 0 and command == MobilityCommand.REVERSE:
-            return False
+        self.calculate_state_ids()
+        self.calculate_control_ids()
 
-        if position == MISSION_SIZE - 1 and command == MobilityCommand.FORWARDS:
-            return False
-    return True
+    def calculate_state_ids(self):
+        self.state_id = {}
+        for index, permutation in enumerate(itertools.product([i for i in range(self.configuration['mission_size'])],
+                                                              repeat=self.configuration['num_agents'])):
+            self.state_id[index] = State(mobility=permutation)
+            self.state_id[State(mobility=permutation)] = index
 
+    def calculate_control_ids(self):
+        self.control_id = {}
+        for index, permutation in enumerate(itertools.product([MobilityCommand.FORWARDS, MobilityCommand.REVERSE],
+                                                              repeat=self.configuration['num_agents'])):
+            self.control_id[index] = Control(mobility=permutation)
+            self.control_id[Control(mobility=permutation)] = index
 
-def execute_control(current_state: State, control: Control) -> State:
-    new_mobility_state: list[int] = []
+    def validate_control(self, current_state: State, control: Control) -> bool:
+        for position, command in zip(current_state.mobility, control.mobility):
+            if position == 0 and command == MobilityCommand.REVERSE:
+                return False
 
-    for position, command in zip(current_state.mobility, control.mobility):
-        if command == MobilityCommand.FORWARDS:
-            new_mobility_state.append(position + 1)
-        else:
-            new_mobility_state.append(position - 1)
+            if position == self.configuration['mission_size'] - 1 and command == MobilityCommand.FORWARDS:
+                return False
+        return True
 
-    return State(mobility=tuple(new_mobility_state))
+    def execute_control(self, current_state: State, control: Control) -> State:
+        new_mobility_state: list[int] = []
+
+        for position, command in zip(current_state.mobility, control.mobility):
+            if command == MobilityCommand.FORWARDS:
+                new_mobility_state.append(position + 1)
+            else:
+                new_mobility_state.append(position - 1)
+
+        return State(mobility=tuple(new_mobility_state))

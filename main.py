@@ -1,38 +1,55 @@
-import os
-from pathlib import Path
-
-import numpy as np
 from tqdm import tqdm
 
-from Dadca import Dadca
 from QLearning import QLearning
-from controller import Controller
 from simulation import Simulation
-from simulation_parameters import MAXIMUM_SIMULATION_STEPS, MISSION_SIZE, NUM_AGENTS
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from simulation_configuration import SimulationConfiguration
 
-def run_simulation(controller: Controller, step_by_step: bool = False, plots: bool = False):
-    simulation = Simulation(controller)
+
+def get_default_configuration() -> SimulationConfiguration:
+    return {
+        'controller': QLearning,
+        'mission_size': 50,
+        'num_agents': 4,
+        'sensor_generation_frequency': 3,
+        'maximum_simulation_steps': 1_000_000,
+        'epsilon_start': 1.,
+        'epsilon_end': 0.001,
+        'learning_rate': 0.1,
+        'gamma': 0.99,
+        'qtable_initialization_value': 0,
+        'qtable_file': None,
+        'training': True,
+        'step_by_step': False,
+        'plots': False
+    }
+
+
+def run_simulation(configuration: SimulationConfiguration):
+    simulation = Simulation(configuration)
 
     throughputs = []
-    agent_positions = {index: [] for index in range(NUM_AGENTS)}
+    throughput_sum = 0
+    agent_positions = {index: [] for index in range(configuration['num_agents'])}
 
-    iterator = range(MAXIMUM_SIMULATION_STEPS)
-    if not step_by_step:
+    print(f"Maximum possible throughput {(configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])}")
+
+    iterator = range(configuration['maximum_simulation_steps'])
+    if not configuration['step_by_step']:
         iterator = tqdm(iterator)
 
     # Simulation iterations
     for _ in iterator:
         # Step by step visualization of simulation state
-        if step_by_step:
+        if configuration['step_by_step']:
             print("---------------------")
             print(f"Ground Station: {simulation.ground_station['packets']}")
             print(f"Sensors: [{', '.join(str(sensor['packets']) for sensor in simulation.sensors)}]")
             agent_string = ""
-            for i in range(MISSION_SIZE):
+            for i in range(configuration['mission_size']):
                 agent_string += "-("
                 agent_string += ", ".join(f"{index}[{agent['packets']}]"
                                           for index, agent in enumerate(simulation.agents) if
@@ -43,37 +60,24 @@ def run_simulation(controller: Controller, step_by_step: bool = False, plots: bo
             input()
         simulation.simulate()
 
-        for index, position in enumerate(simulation.X.mobility):
-            agent_positions[index].append(position)
+        throughput_sum += simulation.ground_station['packets'] / simulation.simulation_step
+        if configuration['plots']:
+            for index, position in enumerate(simulation.X.mobility):
+                agent_positions[index].append(position)
 
-        throughputs.append(simulation.ground_station['packets'] / simulation.simulation_step)
+            throughputs.append(simulation.ground_station['packets'] / simulation.simulation_step)
 
-    controller.finalize()
+    simulation.controller.finalize()
 
-    if plots:
+    if configuration['plots']:
         sns.lineplot(data=throughputs).set(title='Throughput')
         plt.show()
 
-        # plt.figure(figsize=(500, 8))
-        # sns.lineplot(data=agent_positions)
-        # sns.lineplot().set(title='Agent Positions')
-        # plt.show()
+        plt.figure(figsize=(500, 8))
+        sns.lineplot(data=agent_positions)
+        sns.lineplot().set(title='Agent Positions')
+        plt.show()
 
     print(f"Simulation steps: {simulation.simulation_step}")
-    print(f"Average throughput: {sum(throughputs) / len(throughputs)}")
-    print(f"Maximum throughput: {max(throughputs)}")
-    print(f"Last throughput: {throughputs[-1]}")
-
-
-if __name__ == '__main__':
-    print(f"Maximum possible throughput {(MISSION_SIZE - 1) * (1 / SENSOR_GENERATION_FREQUENCY)}")
-
-    print("Simulating DADCA:")
-    run_simulation(Dadca(), plots=False)
-
-    print(f"\n\n\nTraining QLearning")
-    run_simulation(QLearning(qtable_file=Path("./qtable.npy"), learning_rate=0.9), plots=False)
-
-    print("\n\n\nTesting QLearning")
-    run_simulation(QLearning(qtable_file=Path("./qtable.npy"), training=False), plots=False)
-    os.remove("./qtable.npy")
+    print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
+    print(f"Last throughput: {simulation.ground_station['packets'] / simulation.simulation_step}")

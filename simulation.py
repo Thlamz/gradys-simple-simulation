@@ -1,13 +1,8 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
-from tqdm import tqdm
 
-from Dadca import Dadca
-from QLearning import QLearning
 from controller import Controller
-from environment import State, Control, validate_control, execute_control, MobilityCommand
+from environment import State, Control, MobilityCommand, Environment
+from simulation_configuration import SimulationConfiguration
 from node import Node
-from simulation_parameters import MISSION_SIZE, NUM_AGENTS, SENSOR_GENERATION_FREQUENCY, MAXIMUM_SIMULATION_STEPS
 
 
 class SimulationException(Exception):
@@ -20,26 +15,30 @@ class Simulation:
     agents: list[Node]
     sensors: list[Node]
 
+    configuration: SimulationConfiguration
+
     X: State
     U: Control
 
     simulation_step: int
 
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self, configuration: SimulationConfiguration):
         self.simulation_step = 0
+        self.configuration = configuration
+        self.environment = Environment(configuration)
+        self.controller = configuration['controller'](configuration, self.environment)
 
         self.ground_station = {"packets": 0}
         self.agents = []
         self.sensors = []
-        for _ in range(1, MISSION_SIZE):
+        for _ in range(1, configuration['mission_size']):
             self.sensors.append({"packets": 0})
 
-        for _ in range(NUM_AGENTS):
+        for _ in range(configuration['num_agents']):
             self.agents.append({"packets": 0})
 
-        self.X = State(mobility=tuple(0 for _ in range(NUM_AGENTS)))
-        self.U = Control(mobility=tuple(MobilityCommand.FORWARDS for _ in range(NUM_AGENTS)))
+        self.X = State(mobility=tuple(0 for _ in range(configuration['num_agents'])))
+        self.U = Control(mobility=tuple(MobilityCommand.FORWARDS for _ in range(configuration['num_agents'])))
 
     def simulate(self):
         self.U = self.controller.get_control(self.simulation_step,
@@ -48,13 +47,13 @@ class Simulation:
                                              self.ground_station,
                                              self.agents,
                                              self.sensors)
-        if not validate_control(self.X, self.U):
+        if not self.environment.validate_control(self.X, self.U):
             raise SimulationException("Invalid control")
 
-        self.X = execute_control(self.X, self.U)
+        self.X = self.environment.execute_control(self.X, self.U)
 
         # Simulating sensor packet generation
-        if self.simulation_step % SENSOR_GENERATION_FREQUENCY == 0:
+        if self.simulation_step % self.configuration['sensor_generation_frequency'] == 0:
             for sensor in self.sensors:
                 sensor['packets'] += 1
 

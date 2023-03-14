@@ -1,12 +1,17 @@
 from abc import ABC, abstractmethod
 
-from environment import State, Control
+from environment import State, Control, Environment
+from simulation_configuration import SimulationConfiguration
 from node import Node
 
 
 class Controller(ABC):
-    def __init__(self):
-        pass
+    configuration: SimulationConfiguration
+    environment: Environment
+
+    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
+        self.configuration = configuration
+        self.environment = environment
 
     @abstractmethod
     def get_control(self, simulation_step: int,
