@@ -5,6 +5,7 @@ from typing import TypedDict
 from controller import Controller
 from environment import State, Control, MobilityCommand, Environment
 from node import Node
+from simulation_configuration import SimulationConfiguration
 
 
 class DadcaCommand(TypedDict):
