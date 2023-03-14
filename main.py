@@ -28,7 +28,7 @@ def get_default_configuration() -> SimulationConfiguration:
     }
 
 
-def run_simulation(configuration: SimulationConfiguration):
+def run_simulation(configuration: SimulationConfiguration, process_index: int = 0):
     simulation = Simulation(configuration)
 
     throughputs = []
@@ -39,7 +39,7 @@ def run_simulation(configuration: SimulationConfiguration):
 
     iterator = range(configuration['maximum_simulation_steps'])
     if not configuration['step_by_step']:
-        iterator = tqdm(iterator)
+        iterator = tqdm(iterator, position=process_index)
 
     # Simulation iterations
     for _ in iterator:
