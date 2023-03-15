@@ -1,8 +1,10 @@
 import itertools
 import json
 import multiprocessing
+import tracemalloc
 
 from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
 
 from Dadca import Dadca
 from QLearning import QLearning
@@ -18,7 +20,7 @@ def get_default_configuration() -> SimulationConfiguration:
     return {
         'controller': QLearning,
         'mission_size': 50,
-        'num_agents': 4,
+        'num_agents': 2,
         'sensor_generation_frequency': 3,
         'maximum_simulation_steps': 1_000_000,
         'epsilon_start': 1.,
@@ -27,6 +29,8 @@ def get_default_configuration() -> SimulationConfiguration:
         'gamma': 0.99,
         'qtable_initialization_value': 0,
         'qtable_file': None,
+        'qtable_format': 'sparse',
+        'cache_optimal_control': True,
         'training': True,
         'step_by_step': False,
         'plots': False,
@@ -96,28 +100,30 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
 
 def run_permutation(argument):
     index, permutation = argument
-    num_agent, mission_size, controller = permutation
-    config = get_default_configuration()
-    config['num_agents'] = num_agent
-    config['mission_size'] = mission_size
-    config['controller'] = controller
-    config['verbose'] = False
+    print(f"Running permutation {index} - {permutation}")
 
-    return config, run_simulation(config)
+    q_table_format, q_table_cache = permutation
+    config = get_default_configuration()
+    config['qtable_format'] = q_table_format
+    config['cache_optimal_control'] = q_table_cache
+    config['controller'] = QLearning
+
+    results = run_simulation(config)
+    print(f"Finished running permutation {index}")
+    return config, results
 
 
 if __name__ == '__main__':
-    num_agents = [2, 4, 8, 16]
-    mission_sizes = [10, 40, 60, 100]
-    controllers = [Dadca, QLearning]
+    q_table_formats = ['sparse', 'dense']
+    q_table_caches = [True, False]
 
-    permutations = itertools.product(num_agents, mission_sizes, controllers)
+    permutations = itertools.product(q_table_formats, q_table_caches)
 
-    with multiprocessing.Pool() as pool:
-        result = pool.map(run_permutation, enumerate(permutations))
-        print(result)
+    print(f"Running {len(q_table_formats) * len(q_table_caches)} permutations")
+    result = list(map(run_permutation, enumerate(permutations)))
 
-        with open("./results.json", "w") as file:
-            json.dumps(result, indent=2)
+    print(result)
+    with open("./result.txt", "w") as file:
+        file.write(json.dumps(result, indent=2, default=lambda x: None))
 
 
