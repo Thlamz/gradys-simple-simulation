@@ -2,6 +2,8 @@ import itertools
 from enum import Enum
 from typing import NamedTuple, Union
 
+import numpy
+
 from simulation_configuration import SimulationConfiguration
 
 
@@ -18,6 +20,9 @@ class Control(NamedTuple):
     mobility: tuple[MobilityCommand, ...]
 
 
+_control_choices = [v for v in MobilityCommand]
+
+
 class Environment:
     state_id: dict[Union[State, int], Union[State, int]]
     control_id: dict[Union[Control, int], Union[Control, int]]
@@ -27,6 +32,7 @@ class Environment:
 
         self.calculate_state_ids()
         self.calculate_control_ids()
+        self.rng = numpy.random.default_rng()
 
     def calculate_state_ids(self):
         self.state_id = {}
@@ -50,6 +56,15 @@ class Environment:
             if position == self.configuration['mission_size'] - 1 and command == MobilityCommand.FORWARDS:
                 return False
         return True
+
+    def generate_random_control(self, state: State) -> Control:
+        while True:
+            control = Control(mobility=tuple(
+                _control_choices[self.rng.integers(0, len(_control_choices))] for _ in
+                range(self.configuration['num_agents'])))
+            if self.validate_control(state, control):
+                break
+        return control
 
     def execute_control(self, current_state: State, control: Control) -> State:
         new_mobility_state: list[int] = []
