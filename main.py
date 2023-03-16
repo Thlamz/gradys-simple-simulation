@@ -101,11 +101,10 @@ def run_permutation(argument):
     index, permutation = argument
     print(f"Running permutation {index} - {permutation}")
 
-    q_table_format = permutation
-    config = get_default_configuration()
-    config['qtable_format'] = q_table_format
-    config['controller'] = QLearning
-    config['plots'] = True
+    config = {
+        **get_default_configuration(),
+        **permutation
+    }
 
     results = run_simulation(config)
     print(f"Finished running permutation {index}")
@@ -113,16 +112,25 @@ def run_permutation(argument):
     return config, results
 
 
-if __name__ == '__main__':
-    q_table_formats = ['sparse', 'dense']
+def run_campaign(inputs: dict, variable_keys: list[str]):
+    value_ranges = [(key, inputs[key]) for key in variable_keys]
+    permutations = itertools.product(*[value_range[1] for value_range in value_ranges])
 
-    permutations = itertools.product(q_table_formats)
+    fixed_values = {
+        key: value for key, value in inputs.items() if key not in variable_keys
+    }
 
-    print(f"Running {len(q_table_formats)} permutations")
-    result = list(map(run_permutation, enumerate(permutations)))
-
+    mapped_permutations = \
+        map(lambda p: fixed_values | {value_ranges[index][0]: value for index, value in enumerate(p)}, permutations)
+    result = list(map(run_permutation, enumerate(mapped_permutations)))
     print(result)
     with open("./result.txt", "w") as file:
         file.write(json.dumps(result, indent=2, default=lambda x: None))
+
+if __name__ == '__main__':
+    run_campaign({
+        'qtable_format': ['sparse', 'dense'],
+        'learning_rate': 0.9
+    }, ['qtable_format'])
 
 
