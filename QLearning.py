@@ -48,13 +48,11 @@ class QTable(ABC):
 
 class SparseQTable(QTable):
     optimize_cache: bool
-    q_table_optimal_cache: dict[State, Control]
     q_table: dict[State, dict[Control, float]]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
 
-        self.optimize_cache = configuration['cache_optimal_control']
         self.rng = numpy.random.default_rng()
         self.initialize_q_table()
 
@@ -65,57 +63,28 @@ class SparseQTable(QTable):
         with self.configuration['qtable_file'].open("rb") as file:
             self.q_table = pickle.load(file)
 
-        # Populating cache based on loaded q_table
-        if self.optimize_cache:
-            for state in self.q_table.keys():
-                optimal_control = None
-                optimal_q_value = -math.inf
-                for control, q_value in self.q_table[state].items():
-                    if q_value > optimal_q_value:
-                        optimal_control = control
-                        optimal_q_value = q_value
-                if optimal_control is not None:
-                    self.q_table_optimal_cache[state] = optimal_control
-
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None:
             self.load_q_table()
         else:
-            if self.optimize_cache:
-                self.q_table_optimal_cache: dict[State, Control] = {}
-
             self.q_table = defaultdict(lambda: defaultdict(lambda: self.configuration['qtable_initialization_value']))
 
     def get_q_value(self, state: State, control: Control) -> float:
         return self.q_table[state][control]
 
     def get_optimal_control(self, state: State) -> Control:
-        if self.optimize_cache:
-            if state in self.q_table_optimal_cache:
-                return self.q_table_optimal_cache[state]
-            else:
-                return self.environment.generate_random_control(state)
+        optimal_control = None
+        optimal_q_value = -math.inf
+        for control, q_value in self.q_table[state].items():
+            if q_value > optimal_q_value:
+                optimal_control = control
+                optimal_q_value = q_value
+        if optimal_control is not None:
+            return optimal_control
         else:
-            optimal_control = None
-            optimal_q_value = -math.inf
-            for control, q_value in self.q_table[state].items():
-                if q_value > optimal_q_value:
-                    optimal_control = control
-                    optimal_q_value = q_value
-            if optimal_control is not None:
-                return optimal_control
-            else:
-                return self.environment.generate_random_control(state)
+            return self.environment.generate_random_control(state)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        if self.optimize_cache:
-            if state not in self.q_table_optimal_cache:
-                self.q_table_optimal_cache[state] = control
-            else:
-                optimal_q_value = self.get_q_value(state, self.get_optimal_control(state))
-                if q_value > optimal_q_value:
-                    self.q_table_optimal_cache[state] = control
-
         self.q_table[state][control] = q_value
 
     def export_qtable(self):
@@ -126,26 +95,15 @@ class SparseQTable(QTable):
 
 class DenseQTable(QTable):
     optimize_cache: bool
-    q_table_optimal_cache: dict[State, Control]
     q_table: numpy.ndarray[float]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
-
-        self.optimize_cache = configuration['cache_optimal_control']
         self.rng = numpy.random.default_rng()
         self.initialize_q_table()
 
     def load_q_table(self):
-        if self.optimize_cache:
-            self.q_table_optimal_cache: dict[State, Control] = {}
-
         self.q_table = np.load(str(self.configuration['qtable_file']))
-        for state, id in self.environment.state_id.items():
-            if isinstance(state, int):
-                continue
-            optimal_control_id = np.argmax(self.q_table[id, :])
-            self.q_table_optimal_cache[state] = self.environment.control_id[optimal_control_id]
 
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None:
@@ -155,34 +113,19 @@ class DenseQTable(QTable):
             possible_actions = len(MobilityCommand) ** self.configuration['num_agents']
             self.q_table = np.full((possible_states, possible_actions),
                                    self.configuration['qtable_initialization_value'])
-            self.q_table_optimal_cache = {}
 
     def get_q_value(self, state: State, control: Control) -> float:
         return self.q_table[self.environment.state_id[state], self.environment.control_id[control]]
 
     def get_optimal_control(self, state: State) -> Control:
-        if self.optimize_cache:
-            if state in self.q_table_optimal_cache:
-                return self.q_table_optimal_cache[state]
-            else:
-                return self.environment.generate_random_control(state)
+        if np.any(self.q_table[self.environment.state_id[state], :] > self.configuration['qtable_initialization_value']):
+            return self.environment.control_id[
+                np.argmax(self.q_table[self.environment.state_id[state], :])
+            ]
         else:
-            if np.any(self.q_table[self.environment.state_id[state], :] > self.configuration['qtable_initialization_value']):
-                return self.environment.control_id[
-                    np.argmax(self.q_table[self.environment.state_id[state], :])
-                ]
-            else:
-                return self.environment.generate_random_control(state)
+            return self.environment.generate_random_control(state)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        if self.optimize_cache:
-            if state not in self.q_table_optimal_cache:
-                self.q_table_optimal_cache[state] = control
-            else:
-                optimal_q_value = self.get_q_value(state, self.get_optimal_control(state))
-                if q_value > optimal_q_value:
-                    self.q_table_optimal_cache[state] = control
-
         self.q_table[self.environment.state_id[state], self.environment.control_id[control]] = q_value
 
     def export_qtable(self):
@@ -231,7 +174,6 @@ class QLearning(Controller):
 
         self.qtable_file = self.configuration['qtable_file']
         self.qtable_format = self.configuration['qtable_format']
-        self.cache_optimal_control = self.configuration['cache_optimal_control']
         self.q_table = SparseQTable(configuration, environment) if self.qtable_format == 'sparse' else DenseQTable(configuration, environment)
 
         if configuration['verbose']:

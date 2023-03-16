@@ -19,18 +19,17 @@ from simulation_configuration import SimulationConfiguration, SimulationResults
 def get_default_configuration() -> SimulationConfiguration:
     return {
         'controller': QLearning,
-        'mission_size': 50,
+        'mission_size': 20,
         'num_agents': 2,
         'sensor_generation_frequency': 3,
         'maximum_simulation_steps': 1_000_000,
         'epsilon_start': 1.,
         'epsilon_end': 0.001,
-        'learning_rate': 0.1,
+        'learning_rate': 0.9,
         'gamma': 0.99,
         'qtable_initialization_value': 0,
         'qtable_file': None,
         'qtable_format': 'sparse',
-        'cache_optimal_control': True,
         'training': True,
         'step_by_step': False,
         'plots': False,
@@ -102,24 +101,24 @@ def run_permutation(argument):
     index, permutation = argument
     print(f"Running permutation {index} - {permutation}")
 
-    q_table_format, q_table_cache = permutation
+    q_table_format = permutation
     config = get_default_configuration()
     config['qtable_format'] = q_table_format
-    config['cache_optimal_control'] = q_table_cache
     config['controller'] = QLearning
+    config['plots'] = True
 
     results = run_simulation(config)
     print(f"Finished running permutation {index}")
+    print("\n\n\n")
     return config, results
 
 
 if __name__ == '__main__':
     q_table_formats = ['sparse', 'dense']
-    q_table_caches = [True, False]
 
-    permutations = itertools.product(q_table_formats, q_table_caches)
+    permutations = itertools.product(q_table_formats)
 
-    print(f"Running {len(q_table_formats) * len(q_table_caches)} permutations")
+    print(f"Running {len(q_table_formats)} permutations")
     result = list(map(run_permutation, enumerate(permutations)))
 
     print(result)

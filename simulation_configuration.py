@@ -20,7 +20,6 @@ class SimulationConfiguration(TypedDict):
     qtable_initialization_value: float
     qtable_file: Union[Path, None]
     qtable_format: Literal['sparse', 'dense']
-    cache_optimal_control: bool
 
     # Simulation parameters
     training: bool
