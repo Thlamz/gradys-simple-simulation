@@ -1,3 +1,4 @@
+import itertools
 import math
 import pickle
 from abc import ABC, abstractmethod
@@ -96,11 +97,29 @@ class SparseQTable(QTable):
 class DenseQTable(QTable):
     optimize_cache: bool
     q_table: numpy.ndarray[float]
+    state_id: dict
+    control_id: dict
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
         self.rng = numpy.random.default_rng()
         self.initialize_q_table()
+        self.calculate_state_ids()
+        self.calculate_control_ids()
+
+    def calculate_state_ids(self):
+        self.state_id = {}
+        for index, permutation in enumerate(itertools.product([i for i in range(self.configuration['mission_size'])],
+                                                              repeat=self.configuration['num_agents'])):
+            self.state_id[index] = State(mobility=permutation)
+            self.state_id[State(mobility=permutation)] = index
+
+    def calculate_control_ids(self):
+        self.control_id = {}
+        for index, permutation in enumerate(itertools.product([MobilityCommand.FORWARDS, MobilityCommand.REVERSE],
+                                                              repeat=self.configuration['num_agents'])):
+            self.control_id[index] = Control(mobility=permutation)
+            self.control_id[Control(mobility=permutation)] = index
 
     def load_q_table(self):
         self.q_table = np.load(str(self.configuration['qtable_file']))
@@ -115,18 +134,18 @@ class DenseQTable(QTable):
                                    self.configuration['qtable_initialization_value'])
 
     def get_q_value(self, state: State, control: Control) -> float:
-        return self.q_table[self.environment.state_id[state], self.environment.control_id[control]]
+        return self.q_table[self.state_id[state], self.control_id[control]]
 
     def get_optimal_control(self, state: State) -> Control:
-        if np.any(self.q_table[self.environment.state_id[state], :] > self.configuration['qtable_initialization_value']):
-            return self.environment.control_id[
-                np.argmax(self.q_table[self.environment.state_id[state], :])
+        if np.any(self.q_table[self.state_id[state], :] > self.configuration['qtable_initialization_value']):
+            return self.control_id[
+                np.argmax(self.q_table[self.state_id[state], :])
             ]
         else:
             return self.environment.generate_random_control(state)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        self.q_table[self.environment.state_id[state], self.environment.control_id[control]] = q_value
+        self.q_table[self.state_id[state], self.control_id[control]] = q_value
 
     def export_qtable(self):
         if self.configuration['qtable_file'] is not None:
@@ -192,7 +211,6 @@ class QLearning(Controller):
         self.learning_rate = self.configuration['learning_rate']
         self.gamma = self.configuration['gamma']
         self.qtable_initialization_value = self.configuration['qtable_initialization_value']
-
         self.rng = numpy.random.default_rng()
 
     def decay_epsilon(self) -> None:
