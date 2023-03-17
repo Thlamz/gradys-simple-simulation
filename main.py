@@ -2,6 +2,7 @@ import itertools
 import json
 import multiprocessing
 import tracemalloc
+from functools import reduce
 
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
@@ -45,7 +46,8 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
     agent_positions = {index: [] for index in range(configuration['num_agents'])}
 
     if configuration['verbose']:
-        print(f"Maximum possible throughput {(configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])}")
+        print(
+            f"Maximum possible throughput {(configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])}")
 
     iterator = range(configuration['maximum_simulation_steps'])
     if not configuration['step_by_step'] and configuration['verbose']:
@@ -109,7 +111,9 @@ def run_permutation(argument):
     results = run_simulation(config)
     print(f"Finished running permutation {index}")
     print("\n\n\n")
-    return config, results
+    return {
+        key: str(value) for key, value in config.items()
+    }, results
 
 
 def run_campaign(inputs: dict, variable_keys: list[str]):
@@ -120,12 +124,15 @@ def run_campaign(inputs: dict, variable_keys: list[str]):
         key: value for key, value in inputs.items() if key not in variable_keys
     }
 
+    print(f"Running {reduce(lambda a, b: a*b, (len(value) for _key, value in value_ranges))} total permutations \n\n")
+
     mapped_permutations = \
         map(lambda p: fixed_values | {value_ranges[index][0]: value for index, value in enumerate(p)}, permutations)
     result = list(map(run_permutation, enumerate(mapped_permutations)))
     print(result)
     with open("./result.txt", "w") as file:
         file.write(json.dumps(result, indent=2, default=lambda x: None))
+
 
 if __name__ == '__main__':
     run_campaign({
