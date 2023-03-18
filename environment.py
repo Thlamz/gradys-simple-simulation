@@ -38,12 +38,17 @@ class Environment:
         return True
 
     def generate_random_control(self, state: State) -> Control:
-        while True:
-            control = Control(mobility=tuple(
-                _control_choices[self.rng.integers(0, len(_control_choices))] for _ in
-                range(self.configuration['num_agents'])))
-            if self.validate_control(state, control):
-                break
+        mobility_choices = self.rng.integers(0, len(_control_choices), self.configuration['num_agents'])
+        mobility_control = [_control_choices[i] for i in mobility_choices]
+
+        for index, control in enumerate(mobility_control):
+            if state.mobility[index] == 0:
+                mobility_control[index] = MobilityCommand.FORWARDS
+            elif state.mobility[index] == self.configuration['mission_size'] - 1:
+                mobility_control[index] = MobilityCommand.REVERSE
+
+        control = Control(mobility=tuple(mobility_control))
+        assert self.validate_control(state, control)
         return control
 
     def execute_control(self, current_state: State, control: Control) -> State:
