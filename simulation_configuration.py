@@ -29,4 +29,6 @@ class SimulationConfiguration(TypedDict):
 
 
 class SimulationResults(TypedDict):
+    max_possible_throughput: float
     avg_throughput: float
+    config: SimulationConfiguration

@@ -1,11 +1,9 @@
 import itertools
 import json
 import multiprocessing
-import tracemalloc
 from functools import reduce
 
 from tqdm import tqdm
-from tqdm.contrib.concurrent import process_map
 
 from Dadca import Dadca
 from QLearning import QLearning
@@ -45,9 +43,10 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
     throughput_sum = 0
     agent_positions = {index: [] for index in range(configuration['num_agents'])}
 
+    max_possible_throughput = (configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])
     if configuration['verbose']:
         print(
-            f"Maximum possible throughput {(configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])}")
+            f"Maximum possible throughput {max_possible_throughput}")
 
     iterator = range(configuration['maximum_simulation_steps'])
     if not configuration['step_by_step'] and configuration['verbose']:
@@ -95,7 +94,11 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
         print(f"Last throughput: {simulation.ground_station['packets'] / simulation.simulation_step}")
     return {
-        'avg_throughput': throughput_sum / simulation.simulation_step
+        'max_possible_throughput': max_possible_throughput,
+        'avg_throughput': throughput_sum / simulation.simulation_step,
+        'config': {
+            key: str(value) for key, value in configuration.items()
+        }
     }
 
 
@@ -110,13 +113,10 @@ def run_permutation(argument):
 
     results = run_simulation(config)
     print(f"Finished running permutation {index}")
-    print("\n\n\n")
-    return {
-        key: str(value) for key, value in config.items()
-    }, results
+    return results
 
 
-def run_campaign(inputs: dict, variable_keys: list[str]):
+def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool = False, max_processes: int = 4):
     value_ranges = [(key, inputs[key]) for key in variable_keys]
     permutations = itertools.product(*[value_range[1] for value_range in value_ranges])
 
@@ -124,20 +124,28 @@ def run_campaign(inputs: dict, variable_keys: list[str]):
         key: value for key, value in inputs.items() if key not in variable_keys
     }
 
-    print(f"Running {reduce(lambda a, b: a*b, (len(value) for _key, value in value_ranges))} total permutations \n\n")
+    if multi_processing:
+        fixed_values['verbose'] = False
+
+    print(f"Running {reduce(lambda a, b: a * b, (len(value) for _key, value in value_ranges))} total permutations \n\n")
 
     mapped_permutations = \
         map(lambda p: fixed_values | {value_ranges[index][0]: value for index, value in enumerate(p)}, permutations)
-    result = list(map(run_permutation, enumerate(mapped_permutations)))
-    print(result)
+
+    if multi_processing:
+        with multiprocessing.Pool(processes=max_processes) as pool:
+            result = list(pool.map(run_permutation, enumerate(mapped_permutations)))
+    else:
+        result = list(map(run_permutation, enumerate(mapped_permutations)))
+
     with open("./result.txt", "w") as file:
         file.write(json.dumps(result, indent=2, default=lambda x: None))
 
 
 if __name__ == '__main__':
     run_campaign({
-        'qtable_format': ['sparse', 'dense'],
-        'learning_rate': 0.9
-    }, ['qtable_format'])
-
-
+        'num_agents': [2], #, 4, 8, 16],
+        'mission_size': [700], #70, 140, 700],
+        'controller': [QLearning],# Dadca],
+        #'maximum_simulation_steps': 10_000_000
+    }, ['num_agents', 'mission_size', 'controller'])

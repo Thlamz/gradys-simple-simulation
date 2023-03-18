@@ -218,7 +218,9 @@ class QLearning(Controller):
             self.epsilon = self.epsilon_end
         else:
             self.epsilon *= (self.epsilon_end / self.epsilon_start) ** (1 / self.epsilon_horizon)
-        self.epsilons.append(self.epsilon)
+
+        if self.configuration['plots']:
+            self.epsilons.append(self.epsilon)
 
     def compute_cost(self,
                      simulation_step: int,
@@ -241,7 +243,7 @@ class QLearning(Controller):
                     sensors: list[Node]) -> Control:
         cost = self.compute_cost(simulation_step, current_state, ground_station, agents, sensors)
         self.total_cost += cost
-        if simulation_step > 0:
+        if simulation_step > 0 and self.configuration['plots']:
             self.cum_avg_costs.append(self.total_cost / simulation_step)
 
         if self.last_state is not None and self.training:
