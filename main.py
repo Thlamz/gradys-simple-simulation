@@ -144,8 +144,8 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [2], #, 4, 8, 16],
-        'mission_size': [700], #70, 140, 700],
-        'controller': [QLearning],# Dadca],
-        #'maximum_simulation_steps': 10_000_000
-    }, ['num_agents', 'mission_size', 'controller'])
+        'num_agents': [16, 2, 4, 8],
+        'mission_size': [700, 70, 140],
+        'controller': [QLearning, Dadca],
+        'maximum_simulation_steps': 10_000_000
+    }, ['num_agents', 'mission_size', 'controller'], multi_processing=True, max_processes=4)
