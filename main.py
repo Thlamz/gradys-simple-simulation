@@ -148,4 +148,4 @@ if __name__ == '__main__':
         'mission_size': [700, 70, 140],
         'controller': [QLearning, Dadca],
         'maximum_simulation_steps': 10_000_000
-    }, ['num_agents', 'mission_size', 'controller'], multi_processing=True, max_processes=4)
+    }, ['num_agents', 'mission_size', 'controller'])
