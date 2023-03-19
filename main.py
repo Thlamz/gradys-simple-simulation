@@ -138,8 +138,13 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
     else:
         result = list(map(run_permutation, enumerate(mapped_permutations)))
 
-    with open("./result.txt", "w") as file:
-        file.write(json.dumps(result, indent=2, default=lambda x: None))
+    campaign = {
+        'campaign_variables': variable_keys,
+        'results': result
+    }
+
+    with open("./result.json", "w") as file:
+        file.write(json.dumps(campaign, indent=2, default=lambda x: None))
 
 
 if __name__ == '__main__':
