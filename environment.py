@@ -8,7 +8,7 @@ from simulation_configuration import SimulationConfiguration
 
 
 class State(NamedTuple):
-    mobility: tuple[int, ...]
+    mobility: tuple
 
 
 class MobilityCommand(Enum):
@@ -17,7 +17,7 @@ class MobilityCommand(Enum):
 
 
 class Control(NamedTuple):
-    mobility: tuple[MobilityCommand, ...]
+    mobility: tuple
 
 
 _control_choices = [v for v in MobilityCommand]
