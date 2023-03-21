@@ -143,7 +143,7 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
         'results': result
     }
 
-    with open("./result.json", "w") as file:
+    with open("analysis/result.json", "w") as file:
         file.write(json.dumps(campaign, indent=2, default=lambda x: None))
 
 
