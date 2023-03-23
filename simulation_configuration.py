@@ -10,9 +10,10 @@ class SimulationConfiguration(TypedDict):
     mission_size: int
     num_agents: int
     sensor_generation_frequency: int
+    sensor_generation_probability: float
     maximum_simulation_steps: int
 
-    # Q LEarning parameters
+    # Q Learning parameters
     epsilon_start: float
     epsilon_end: float
     learning_rate: float
@@ -30,5 +31,6 @@ class SimulationConfiguration(TypedDict):
 
 class SimulationResults(TypedDict):
     max_possible_throughput: float
+    expected_throughput: float
     avg_throughput: float
     config: SimulationConfiguration

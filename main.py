@@ -21,6 +21,7 @@ def get_default_configuration() -> SimulationConfiguration:
         'mission_size': 20,
         'num_agents': 2,
         'sensor_generation_frequency': 3,
+        'sensor_generation_probability': 0.6,
         'maximum_simulation_steps': 1_000_000,
         'epsilon_start': 1.,
         'epsilon_end': 0.001,
@@ -44,9 +45,12 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
     agent_positions = {index: [] for index in range(configuration['num_agents'])}
 
     max_possible_throughput = (configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])
+    expected_throughput = ((configuration['mission_size'] - 1)
+                           * (1 / configuration['sensor_generation_frequency'])
+                           * configuration['sensor_generation_probability'])
     if configuration['verbose']:
-        print(
-            f"Maximum possible throughput {max_possible_throughput}")
+        print(f"Maximum possible throughput {max_possible_throughput}")
+        print(f"Expected throughput {expected_throughput}")
 
     iterator = range(configuration['maximum_simulation_steps'])
     if not configuration['step_by_step'] and configuration['verbose']:
@@ -95,6 +99,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         print(f"Last throughput: {simulation.ground_station['packets'] / simulation.simulation_step}")
     return {
         'max_possible_throughput': max_possible_throughput,
+        'expected_throughput': expected_throughput,
         'avg_throughput': throughput_sum / simulation.simulation_step,
         'config': {
             key: str(value) for key, value in configuration.items()

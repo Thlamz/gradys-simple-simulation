@@ -1,3 +1,4 @@
+import numpy
 
 from controller import Controller
 from environment import State, Control, MobilityCommand, Environment
@@ -39,6 +40,7 @@ class Simulation:
 
         self.X = State(mobility=tuple(0 for _ in range(configuration['num_agents'])))
         self.U = Control(mobility=tuple(MobilityCommand.FORWARDS for _ in range(configuration['num_agents'])))
+        self.rng = numpy.random.default_rng()
 
     def simulate(self):
         self.U = self.controller.get_control(self.simulation_step,
@@ -55,7 +57,8 @@ class Simulation:
         # Simulating sensor packet generation
         if self.simulation_step % self.configuration['sensor_generation_frequency'] == 0:
             for sensor in self.sensors:
-                sensor['packets'] += 1
+                if self.rng.random() < self.configuration['sensor_generation_probability']:
+                    sensor['packets'] += 1
 
         # Simulate message exchange
         for index1, agent1 in enumerate(self.agents):
