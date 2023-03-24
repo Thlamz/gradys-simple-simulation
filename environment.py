@@ -1,4 +1,5 @@
 import itertools
+import math
 from enum import Enum
 from typing import NamedTuple, Union
 
@@ -13,7 +14,7 @@ class State(NamedTuple):
 
 class MobilityCommand(Enum):
     FORWARDS = 1
-    REVERSE = -1
+    REVERSE = 0
 
 
 class Control(NamedTuple):
@@ -23,10 +24,61 @@ class Control(NamedTuple):
 _control_choices = [v for v in MobilityCommand]
 
 
+def tuple_to_base_id(t: tuple, base: int) -> int:
+    result = 0
+    for index, data in enumerate(t):
+        result += base ** index * data
+    return result
+
+
+def base_id_to_tuple(n: int, base: int, size: int) -> tuple:
+    result = [0 for _ in range(size)]
+    digit = 0
+    while n >= base:
+        remainder = n % base
+        result[digit] = int(remainder)
+        n = (n - remainder) / base
+        digit += 1
+    result[digit] = int(n)
+    return tuple(result)
+
+
+class StateSerializer:
+    base: int
+
+    def __init__(self, max_value: int, num_agents: int):
+        self.base = max_value
+        self.size = num_agents
+
+    def __getitem__(self, item: State | int):
+        if isinstance(item, State):
+            return tuple_to_base_id(item.mobility, self.base)
+        else:
+            return State(mobility=base_id_to_tuple(item, self.base, self.size))
+
+
+class ControlSerializer:
+    base: int
+
+    def __init__(self, max_value: int, num_agents: int):
+        self.base = max_value
+        self.size = num_agents
+
+    def __getitem__(self, item: Control | int):
+        if isinstance(item, Control):
+            return tuple_to_base_id(tuple(cmd.value for cmd in item.mobility), self.base)
+        else:
+            return Control(mobility=tuple(MobilityCommand(value) for value in base_id_to_tuple(item, self.base, self.size)))
+
+
 class Environment:
     def __init__(self, configuration: SimulationConfiguration):
         self.configuration = configuration
-        self.rng = numpy.random.default_rng()
+        self.mission_size = self.configuration['mission_size']
+        self.rng = numpy.random.default_rng(seed=0)
+
+        self.state_id = StateSerializer(self.configuration['mission_size'], self.configuration['num_agents'])
+        self.control_id = ControlSerializer(len(MobilityCommand), self.configuration['num_agents'])
 
     def validate_control(self, current_state: State, control: Control) -> bool:
         for position, command in zip(current_state.mobility, control.mobility):
