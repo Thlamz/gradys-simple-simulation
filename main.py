@@ -1,7 +1,9 @@
 import itertools
 import json
 import multiprocessing
+import os
 from functools import reduce
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -88,7 +90,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         sns.lineplot(data=throughputs).set(title='Throughput')
         plt.show()
 
-        plt.figure(figsize=(500, 8))
+        plt.figure(figsize=(300, 8))
         sns.lineplot(data=agent_positions)
         sns.lineplot().set(title='Agent Positions')
         plt.show()
@@ -111,13 +113,21 @@ def run_permutation(argument):
     index, permutation = argument
     print(f"Running permutation {index} - {permutation}")
 
+    q_table_path = Path(f"./{index}.pickle")
     config = {
         **get_default_configuration(),
-        **permutation
+        **permutation,
+        'qtable_file': q_table_path
     }
 
-    results = run_simulation(config)
-    print(f"Finished running permutation {index}")
+    run_simulation(config)
+    if config['controller'] == QLearning:
+        print(f"Running testing for permutation {index} - {permutation}")
+        config['training'] = False
+        results = run_simulation(config)
+        os.unlink(q_table_path)
+
+    print(f"Finished running permutation {index}\n\n")
     return results
 
 
@@ -154,8 +164,11 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [16, 2, 4, 8],
-        'mission_size': [700, 70, 140],
-        'controller': [QLearning, Dadca],
-        'maximum_simulation_steps': 10_000_000
-    }, ['num_agents', 'mission_size', 'controller'])
+        'num_agents': [2],
+        'mission_size': 20,
+        'sensor_generation_probability': [1],
+        'controller': [QLearning],
+        'qtable_format': ['sparse'],
+        'maximum_simulation_steps': 1_000_000,
+        'plots': False
+    }, ['num_agents', 'sensor_generation_probability', 'controller', 'qtable_format'])
