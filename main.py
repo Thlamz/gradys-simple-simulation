@@ -165,7 +165,7 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': [2],
-        'mission_size': 20,
+        'mission_size': 700,
         'sensor_generation_probability': [1],
         'controller': [QLearning],
         'qtable_format': ['sparse'],
