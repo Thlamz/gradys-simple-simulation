@@ -194,7 +194,7 @@ class QLearning(Controller):
 
         self.epsilon_start = self.configuration['epsilon_start']
         self.epsilon_end = self.configuration['epsilon_end']
-        self.epsilon_horizon = self.configuration['maximum_simulation_steps'] / 2
+        self.epsilon_horizon = self.configuration['maximum_simulation_steps']
         self.learning_rate = self.configuration['learning_rate']
         self.gamma = self.configuration['gamma']
         self.qtable_initialization_value = self.configuration['qtable_initialization_value']
@@ -258,5 +258,8 @@ class QLearning(Controller):
     def finalize(self):
         if self.configuration['plots']:
             sns.lineplot(data=self.cum_avg_costs).set(title="Cum Avg Train Cost")
+            plt.show()
+
+            sns.lineplot(data=self.epsilons).set(title="Epsilons")
             plt.show()
         self.q_table.export_qtable()

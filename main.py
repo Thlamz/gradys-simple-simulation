@@ -90,7 +90,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         sns.lineplot(data=throughputs).set(title='Throughput')
         plt.show()
 
-        plt.figure(figsize=(300, 8))
+        plt.figure(figsize=(50, 8))
         sns.lineplot(data=agent_positions)
         sns.lineplot().set(title='Agent Positions')
         plt.show()
@@ -165,10 +165,11 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': [2],
-        'mission_size': 700,
+        'mission_size': 50,
         'sensor_generation_probability': [1],
         'controller': [QLearning],
-        'qtable_format': ['sparse'],
+        'qtable_format': ['sparse', 'dense'],
+        'learning_rate': 0.1,
         'maximum_simulation_steps': 1_000_000,
-        'plots': False
+        'plots': True
     }, ['num_agents', 'sensor_generation_probability', 'controller', 'qtable_format'])
