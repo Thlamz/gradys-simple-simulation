@@ -194,5 +194,5 @@ if __name__ == '__main__':
         'sensor_generation_probability': 1,
         'controller': QLearning,
         'qtable_format': 'sparse',
-        'maximum_simulation_steps': 10_000_000,
+        'maximum_simulation_steps': 100_000_000,
     }, ['mission_size'])
