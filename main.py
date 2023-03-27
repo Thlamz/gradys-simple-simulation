@@ -195,4 +195,4 @@ if __name__ == '__main__':
         'controller': QLearning,
         'qtable_format': 'sparse',
         'maximum_simulation_steps': 100_000_000,
-    }, ['mission_size'])
+    }, ['mission_size'], multi_processing=True)
