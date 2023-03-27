@@ -180,7 +180,7 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 
     campaign = {
         'campaign_variables': variable_keys,
-        'results': list(itertools.chain(results))
+        'results': list(itertools.chain(*results))
     }
 
     with open("analysis/result.json", "w") as file:
