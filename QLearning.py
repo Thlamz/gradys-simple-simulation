@@ -19,6 +19,9 @@ from node import Node
 
 
 class QTable(ABC):
+    """
+    Abstract class implementing methods necessary for a QTable implementation
+    """
     configuration: SimulationConfiguration
     environment: Environment
 
@@ -48,6 +51,9 @@ class QTable(ABC):
 
 
 class SparseQTable(QTable):
+    """
+    Q Table implementation with a sparse implementation using dictionaries
+    """
     q_table: dict[State, dict[Control, float]]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
@@ -100,6 +106,9 @@ class SparseQTable(QTable):
 
 
 class DenseQTable(QTable):
+    """
+    Dense Q Table implementation that used numpy arrays
+    """
     q_table: numpy.ndarray[float]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
@@ -142,16 +151,24 @@ class DenseQTable(QTable):
 
 
 class QLearning(Controller):
+    """
+    Controller that implements a Centralized Q Learning algorithm
+    """
+
     training: bool
     """ Training flag. If set to false doesn't try to update the Q Table """
 
     qtable_file: Optional[Path] = None
-    """ Path where a Q Table pickle is located. If set will try to load the Q Table at initialization """
+    """ 
+    Path where a Q Table should be serialized and persisted. 
+    If set will try to load the Q Table at initialization.
+    """
 
     # Variables updated during execution
     last_state: Optional[State]
     epsilon: float
     q_table: QTable
+    """QTable class implementing QTable operations"""
 
     # Statistic collection
     total_cost: float

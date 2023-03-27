@@ -14,6 +14,10 @@ class DadcaCommand(TypedDict):
 
 
 class Dadca(Controller):
+    """
+    Controller that implements DADCA
+    """
+
     agent_neighbours: list[list[int, int]]
     agent_commands: dict[int, DadcaCommand]
 

@@ -11,6 +11,11 @@ class SimulationException(Exception):
 
 
 class Simulation:
+    """
+    Represents an instance of a simulation. This class acts as a coordinator between all the nodes in the simulation,
+    and the environment
+    """
+
     controller: Controller
     ground_station: Node
     agents: list[Node]
@@ -43,6 +48,7 @@ class Simulation:
         self.rng = numpy.random.default_rng()
 
     def simulate(self):
+        """ Runs a single simulation step """
         self.U = self.controller.get_control(self.simulation_step,
                                              self.X,
                                              self.U,

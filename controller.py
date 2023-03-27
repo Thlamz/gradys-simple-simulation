@@ -6,6 +6,10 @@ from node import Node
 
 
 class Controller(ABC):
+    """
+    Abstract class representing a controller. Controllers are responsible for reading the simulation state and
+    choosing the next global control that should be executed.
+    """
     configuration: SimulationConfiguration
     environment: Environment
 
