@@ -189,11 +189,10 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [2],
-        'mission_size': 140,
-        'sensor_generation_probability': [1],
-        'controller': [QLearning],
-        'qtable_format': ['sparse'],
-        'learning_rate': 0.9,
+        'num_agents': 2,
+        'mission_size': [70, 140, 700],
+        'sensor_generation_probability': 1,
+        'controller': QLearning,
+        'qtable_format': 'sparse',
         'maximum_simulation_steps': 10_000_000,
-    }, ['num_agents', 'sensor_generation_probability', 'controller', 'qtable_format'])
+    }, ['mission_size'])
