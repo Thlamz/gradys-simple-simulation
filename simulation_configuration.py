@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TypedDict, Callable, Union, Literal
+from typing import TypedDict, Callable, Union, Literal, Optional
 
 
 class SimulationConfiguration(TypedDict):
@@ -11,6 +11,7 @@ class SimulationConfiguration(TypedDict):
     num_agents: int
     sensor_generation_frequency: int
     sensor_generation_probability: float
+    sensor_packet_lifecycle: Optional[int]
     maximum_simulation_steps: int
 
     # Q Learning parameters

@@ -3,7 +3,7 @@ import numpy
 from controller import Controller
 from environment import State, Control, MobilityCommand, Environment
 from simulation_configuration import SimulationConfiguration
-from node import Node
+from node import Node, LifecycleNode
 
 
 class SimulationException(Exception):
@@ -19,7 +19,7 @@ class Simulation:
     controller: Controller
     ground_station: Node
     agents: list[Node]
-    sensors: list[Node]
+    sensors: list[LifecycleNode]
 
     configuration: SimulationConfiguration
 
@@ -34,14 +34,14 @@ class Simulation:
         self.environment = Environment(configuration)
         self.controller = configuration['controller'](configuration, self.environment)
 
-        self.ground_station = {"packets": 0}
+        self.ground_station = Node()
         self.agents = []
         self.sensors = []
         for _ in range(1, configuration['mission_size']):
-            self.sensors.append({"packets": 0})
+            self.sensors.append(LifecycleNode())
 
         for _ in range(configuration['num_agents']):
-            self.agents.append({"packets": 0})
+            self.agents.append(Node())
 
         self.X = State(mobility=tuple(0 for _ in range(configuration['num_agents'])))
         self.U = Control(mobility=tuple(MobilityCommand.FORWARDS for _ in range(configuration['num_agents'])))
@@ -63,8 +63,14 @@ class Simulation:
         # Simulating sensor packet generation
         if self.simulation_step % self.configuration['sensor_generation_frequency'] == 0:
             for sensor in self.sensors:
+                if self.configuration['sensor_packet_lifecycle'] is not None:
+                    # Removing old packets
+                    sensor.lifecycle_packets = \
+                        [packet for packet in sensor.lifecycle_packets
+                         if self.simulation_step - packet['created_at'] < self.configuration['sensor_packet_lifecycle']]
+
                 if self.rng.random() < self.configuration['sensor_generation_probability']:
-                    sensor['packets'] += 1
+                    sensor.lifecycle_packets.append({'created_at': self.simulation_step})
 
         # Simulate message exchange
         for index1, agent1 in enumerate(self.agents):
@@ -77,17 +83,17 @@ class Simulation:
                     continue
 
                 if self.X.mobility[index2] <= (self.X.mobility[index1] + 2):
-                    agent1['packets'] += agent2['packets']
-                    agent2['packets'] = 0
+                    agent1.packets += agent2.packets
+                    agent2.packets = 0
 
         # Simulating sensor packet pickup
         for index, agent in enumerate(self.agents):
             agent_mobility = self.X.mobility[index]
             if agent_mobility == 0:
-                self.ground_station['packets'] += agent['packets']
-                agent['packets'] = 0
+                self.ground_station.packets += agent.packets
+                agent.packets = 0
             else:
-                agent['packets'] += self.sensors[agent_mobility - 1]['packets']
-                self.sensors[agent_mobility - 1]['packets'] = 0
+                agent.packets += self.sensors[agent_mobility - 1].packets
+                self.sensors[agent_mobility - 1].lifecycle_packets = []
 
         self.simulation_step += 1
