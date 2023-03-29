@@ -180,7 +180,7 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
         results = list(map(_run_permutation, enumerate(mapped_permutations)))
 
     campaign = {
-        'campaign_variables': variable_keys,
+        'campaign_variables': variable_keys + ['training'],
         'results': list(itertools.chain(*results))
     }
 
@@ -190,10 +190,10 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': 2,
+        'num_agents': [2, 4, 8, 16],
         'mission_size': [70, 140, 700],
-        'sensor_generation_probability': 1,
-        'controller': QLearning,
-        'qtable_format': 'sparse',
-        'maximum_simulation_steps': 100_000_000,
-    }, ['mission_size'], multi_processing=True)
+        'sensor_generation_probability': 0.6,
+        'sensor_packet_lifecycle': 6,
+        'controller': [QLearning, Dadca],
+        'maximum_simulation_steps': 10_000_000,
+    }, ['num_agents', 'mission_size', 'controller'], multi_processing=True)
