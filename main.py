@@ -1,5 +1,6 @@
 import itertools
 import json
+import math
 import multiprocessing
 import os
 from functools import reduce
@@ -193,9 +194,9 @@ if __name__ == '__main__':
     run_campaign({
         'num_agents': 4,
         'mission_size': 200,
-        'sensor_generation_probability': 0.6,
-        'sensor_packet_lifecycle': 25,
+        'sensor_generation_probability': 1,
+        'sensor_packet_lifecycle': math.inf,
         'controller': [QLearning, Dadca],
         'maximum_simulation_steps': [int(n) for n in np.linspace(0, 10_000_000, 50)],
-        'repetitions': [1, 2, 3, 5]
+        'repetitions': [1, 2, 3, 5],
     }, ['maximum_simulation_steps', 'repetitions', 'controller'], multi_processing=True)
