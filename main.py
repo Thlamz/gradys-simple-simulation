@@ -5,6 +5,7 @@ import os
 from functools import reduce
 from pathlib import Path
 
+import numpy as np
 from tqdm import tqdm
 
 from Dadca import Dadca
@@ -190,10 +191,11 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [2, 4, 8, 16],
-        'mission_size': [70, 140, 700],
+        'num_agents': 4,
+        'mission_size': 200,
         'sensor_generation_probability': 0.6,
-        'sensor_packet_lifecycle': 6,
+        'sensor_packet_lifecycle': 25,
         'controller': [QLearning, Dadca],
-        'maximum_simulation_steps': 10_000_000,
-    }, ['num_agents', 'mission_size', 'controller'], multi_processing=True)
+        'maximum_simulation_steps': [int(n) for n in np.linspace(0, 10_000_000, 50)],
+        'repetitions': [1, 2, 3, 5]
+    }, ['maximum_simulation_steps', 'repetitions', 'controller'], multi_processing=True)
