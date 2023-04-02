@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
-from environment import State, Control, Environment
+from environment import Control, Environment
 from simulation_configuration import SimulationConfiguration
-from node import Node
+from state import State
 
 
 class Controller(ABC):
@@ -18,12 +19,7 @@ class Controller(ABC):
         self.environment = environment
 
     @abstractmethod
-    def get_control(self, simulation_step: int,
-                    current_state: State,
-                    current_control: Control,
-                    ground_station: Node,
-                    agents: list[Node],
-                    sensors: list[Node]) -> Control:
+    def get_control(self, simulation_step: int, current_state: State, current_control: Optional[Control]) -> Control:
         pass
 
     def finalize(self):

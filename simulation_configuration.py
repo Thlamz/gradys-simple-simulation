@@ -6,6 +6,9 @@ class SimulationConfiguration(TypedDict):
     controller: Callable
     """Controller used to generate controls at every simulation step"""
 
+    # State parameters
+    state: Callable
+
     # Environment parameters
     mission_size: int
     num_agents: int

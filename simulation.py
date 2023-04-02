@@ -1,9 +1,12 @@
+from typing import Optional
+
 import numpy
 
+from control import Control
 from controller import Controller
-from environment import State, Control, MobilityCommand, Environment
+from environment import MobilityCommand, Environment
 from simulation_configuration import SimulationConfiguration
-from node import Node, LifecycleNode
+from state import State
 
 
 class SimulationException(Exception):
@@ -17,14 +20,11 @@ class Simulation:
     """
 
     controller: Controller
-    ground_station: Node
-    agents: list[Node]
-    sensors: list[LifecycleNode]
 
     configuration: SimulationConfiguration
 
     X: State
-    U: Control
+    U: Optional[Control]
 
     simulation_step: int
 
@@ -34,66 +34,53 @@ class Simulation:
         self.environment = Environment(configuration)
         self.controller = configuration['controller'](configuration, self.environment)
 
-        self.ground_station = Node()
-        self.agents = []
-        self.sensors = []
-        for _ in range(1, configuration['mission_size']):
-            self.sensors.append(LifecycleNode())
-
-        for _ in range(configuration['num_agents']):
-            self.agents.append(Node())
-
-        self.X = State(mobility=tuple(0 for _ in range(configuration['num_agents'])))
-        self.U = Control(mobility=tuple(MobilityCommand.FORWARDS for _ in range(configuration['num_agents'])))
         self.rng = numpy.random.default_rng()
+
+        self.X = self.configuration['state'](self.configuration, self.environment)
+        self.U = None
 
     def simulate(self):
         """ Runs a single simulation step """
-        self.U = self.controller.get_control(self.simulation_step,
-                                             self.X,
-                                             self.U,
-                                             self.ground_station,
-                                             self.agents,
-                                             self.sensors)
-        if not self.environment.validate_control(self.X, self.U):
+        self.U = self.controller.get_control(self.simulation_step, self.X, self.U)
+        if not self.environment.validate_control(self.U):
             raise SimulationException("Invalid control")
 
-        self.X = self.environment.execute_control(self.X, self.U)
+        self.environment.execute_control(self.U)
 
         # Simulating sensor packet generation
         if self.simulation_step % self.configuration['sensor_generation_frequency'] == 0:
-            for sensor in self.sensors:
-                if self.configuration['sensor_packet_lifecycle'] is not None:
-                    # Removing old packets
-                    sensor.lifecycle_packets = \
-                        [packet for packet in sensor.lifecycle_packets
-                         if self.simulation_step - packet['created_at'] < self.configuration['sensor_packet_lifecycle']]
-
-                if self.rng.random() < self.configuration['sensor_generation_probability']:
+            probabilities = self.rng.random(size=self.configuration['mission_size'] - 1)
+            for sensor, probability in zip(self.environment.sensors, probabilities):
+                if probability < self.configuration['sensor_generation_probability']:
                     sensor.lifecycle_packets.append({'created_at': self.simulation_step})
 
         # Simulate message exchange
-        for index1, agent1 in enumerate(self.agents):
+        for index1, agent1 in enumerate(self.environment.agents):
             if self.U.mobility[index1] == MobilityCommand.FORWARDS:
                 continue
 
-            for index2, agent2 in enumerate(self.agents):
+            for index2, agent2 in enumerate(self.environment.agents):
                 if self.U.mobility[index2] == MobilityCommand.REVERSE \
-                        or self.X.mobility[index1] > self.X.mobility[index2]:
+                        or agent1.position > agent2.position:
                     continue
 
-                if self.X.mobility[index2] <= (self.X.mobility[index1] + 2):
+                if agent2.position <= (agent1.position + 2):
                     agent1.packets += agent2.packets
                     agent2.packets = 0
 
         # Simulating sensor packet pickup
-        for index, agent in enumerate(self.agents):
-            agent_mobility = self.X.mobility[index]
+        for index, agent in enumerate(self.environment.agents):
+            agent_mobility = agent.position
             if agent_mobility == 0:
-                self.ground_station.packets += agent.packets
+                self.environment.ground_station.packets += agent.packets
                 agent.packets = 0
             else:
-                agent.packets += self.sensors[agent_mobility - 1].packets
-                self.sensors[agent_mobility - 1].lifecycle_packets = []
+                num_packets = 0
+                for packet in self.environment.sensors[agent_mobility - 1].lifecycle_packets:
+                    if self.simulation_step - packet['created_at'] <= self.configuration['sensor_packet_lifecycle']:
+                        num_packets += 1
+                agent.packets += num_packets
+                self.environment.sensors[agent_mobility - 1].lifecycle_packets = []
 
+        self.X = self.configuration['state'](self.configuration, self.environment)
         self.simulation_step += 1

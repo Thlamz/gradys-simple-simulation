@@ -17,6 +17,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from simulation_configuration import SimulationConfiguration, SimulationResults
+from state import MobilityState
 
 
 def get_default_configuration() -> SimulationConfiguration:
@@ -25,6 +26,7 @@ def get_default_configuration() -> SimulationConfiguration:
     """
     return {
         'controller': QLearning,
+        'state': MobilityState,
         'mission_size': 20,
         'num_agents': 2,
         'sensor_generation_frequency': 3,
@@ -75,26 +77,26 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         # Step by step visualization of simulation state
         if configuration['step_by_step']:
             print("---------------------")
-            print(f"Ground Station: {simulation.ground_station.packets}")
-            print(f"Sensors: [{', '.join(str(sensor.packets) for sensor in simulation.sensors)}]")
+            print(f"Ground Station: {simulation.environment.ground_station.packets}")
+            print(f"Sensors: [{', '.join(str(sensor.packets) for sensor in simulation.environment.sensors)}]")
             agent_string = ""
             for i in range(configuration['mission_size']):
                 agent_string += "-("
                 agent_string += ", ".join(f"{index}[{agent.packets}]"
-                                          for index, agent in enumerate(simulation.agents) if
-                                          simulation.X.mobility[index] == i)
+                                          for index, agent in enumerate(simulation.environment.agents) if
+                                          agent.position == i)
                 agent_string += ")-"
             print(f"Agents: [{agent_string}]")
 
             input()
         simulation.simulate()
 
-        throughput_sum += simulation.ground_station.packets / simulation.simulation_step
+        throughput_sum += simulation.environment.ground_station.packets / simulation.simulation_step
         if configuration['plots']:
-            for index, position in enumerate(simulation.X.mobility):
-                agent_positions[index].append(position)
+            for index, agent in enumerate(simulation.environment.agents):
+                agent_positions[index].append(agent.position)
 
-            throughputs.append(simulation.ground_station.packets / simulation.simulation_step)
+            throughputs.append(simulation.environment.ground_station.packets / simulation.simulation_step)
 
     simulation.controller.finalize()
 
@@ -110,7 +112,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
     if configuration['verbose']:
         print(f"Simulation steps: {simulation.simulation_step}")
         print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
-        print(f"Last throughput: {simulation.ground_station.packets / simulation.simulation_step}")
+        print(f"Last throughput: {simulation.environment.ground_station.packets / simulation.simulation_step}")
     return {
         'max_possible_throughput': max_possible_throughput,
         'expected_throughput': expected_throughput,

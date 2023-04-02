@@ -1,11 +1,12 @@
 import itertools
 import math
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 from controller import Controller
-from environment import State, Control, MobilityCommand, Environment
-from node import Node
+from environment import Control, MobilityCommand, Environment
+from node import Agent
 from simulation_configuration import SimulationConfiguration
+from state import State
 
 
 class DadcaCommand(TypedDict):
@@ -26,16 +27,16 @@ class Dadca(Controller):
         self.agent_neighbours = [[0, 0] for _ in range(self.configuration['num_agents'])]
         self.agent_commands = {}
 
-    def get_control(self,
-                    simulation_step: int,
-                    current_state: State,
-                    current_control: Control,
-                    ground_station: Node,
-                    agents: list[Node],
-                    sensors: list[Node]) -> Control:
-        new_mobility_commands = list(current_control.mobility)
+    def get_control(self, simulation_step: int, current_state: State, current_control: Optional[Control]) -> Control:
+        if current_control is not None:
+            new_mobility_commands = list(current_control.mobility)
+        else:
+            mobility = [MobilityCommand.FORWARDS for _ in range(self.configuration['num_agents'])]
+            current_control = Control(tuple(mobility), self.configuration)
+            new_mobility_commands = mobility.copy()
 
-        for combination in itertools.combinations(enumerate(agents), 2):
+        combination: tuple[tuple[int, Agent], tuple[int, Agent]]
+        for combination in itertools.combinations(enumerate(self.environment.agents), 2):
             index1, agent1 = combination[0]
             index2, agent2 = combination[1]
 
@@ -44,7 +45,7 @@ class Dadca(Controller):
                 continue
 
             # Ignoring agents that are not in the same position
-            if current_state.mobility[index1] != current_state.mobility[index2]:
+            if agent1.position != agent2.position:
                 continue
 
             if current_control.mobility[index1] == MobilityCommand.REVERSE:
@@ -74,19 +75,19 @@ class Dadca(Controller):
             }
 
         for agentIndex, command in self.agent_commands.copy().items():
-            if current_state.mobility[agentIndex] < command['destination']:
+            if self.environment.agents[agentIndex].position < command['destination']:
                 new_mobility_commands[agentIndex] = MobilityCommand.FORWARDS
-            elif current_state.mobility[agentIndex] > command['destination']:
+            elif self.environment.agents[agentIndex].position > command['destination']:
                 new_mobility_commands[agentIndex] = MobilityCommand.REVERSE
             else:
                 new_mobility_commands[agentIndex] = command['proceed']
                 self.agent_commands.pop(agentIndex)
 
         # Respecting mission boundaries
-        for index, agent in enumerate(agents):
-            if current_state.mobility[index] == 0:
+        for index, agent in enumerate(self.environment.agents):
+            if agent.position == 0:
                 new_mobility_commands[index] = MobilityCommand.FORWARDS
-            elif current_state.mobility[index] == self.configuration['mission_size'] - 1:
+            elif agent.position == self.configuration['mission_size'] - 1:
                 new_mobility_commands[index] = MobilityCommand.REVERSE
 
-        return Control(mobility=tuple(new_mobility_commands))
+        return Control(tuple(new_mobility_commands), self.configuration)

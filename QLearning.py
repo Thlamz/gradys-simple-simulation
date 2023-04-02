@@ -10,12 +10,12 @@ import numpy as np
 import numpy.random
 
 from controller import Controller
-from environment import State, Control, MobilityCommand, Environment
+from environment import Control, MobilityCommand, Environment
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 from simulation_configuration import SimulationConfiguration
-from node import Node
+from state import State
 
 
 class QTable(ABC):
@@ -89,7 +89,7 @@ class SparseQTable(QTable):
         if optimal_control is not None:
             return optimal_control
         else:
-            return self.environment.generate_random_control(state)
+            return self.environment.generate_random_control()
 
     def set_q_value(self, state: State, control: Control, q_value: float):
         self.q_table[state][control] = q_value
@@ -129,19 +129,18 @@ class DenseQTable(QTable):
                                    dtype=float)
 
     def get_q_value(self, state: State, control: Control) -> float:
-        return self.q_table[self.environment.state_id[state], self.environment.control_id[control]]
+        return self.q_table[hash(state), hash(control)]
 
     def get_optimal_control(self, state: State) -> Control:
-        if np.any(self.q_table[self.environment.state_id[state], :] > self.configuration['qtable_initialization_value']):
-            return self.environment.control_id[
-                np.argmax(self.q_table[self.environment.state_id[state], :])
-            ]
+        if np.any(self.q_table[hash(state), :] > self.configuration['qtable_initialization_value']):
+            hash_id = np.argmax(self.q_table[hash(state), :])
+            return Control.unhash(hash_id, self.configuration)
         else:
-            return self.environment.generate_random_control(state)
+            return self.environment.generate_random_control()
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        state_id = self.environment.state_id[state]
-        control_id = self.environment.control_id[control]
+        state_id = hash(state)
+        control_id = hash(control)
         self.q_table[state_id, control_id] = q_value
 
     def export_qtable(self):
@@ -171,8 +170,8 @@ class QLearning(Controller):
     """QTable class implementing QTable operations"""
 
     # Statistic collection
-    total_cost: float
-    cum_avg_costs: list[float]
+    total_reward: float
+    cum_avg_rewards: list[float]
     epsilons: list[float]
 
     # Configuration variables
@@ -197,7 +196,9 @@ class QLearning(Controller):
 
         self.qtable_file = self.configuration['qtable_file']
         self.qtable_format = self.configuration['qtable_format']
-        self.q_table = SparseQTable(configuration, environment) if self.qtable_format == 'sparse' else DenseQTable(configuration, environment)
+        self.q_table = SparseQTable(configuration, environment) \
+            if self.qtable_format == 'sparse' \
+            else DenseQTable(configuration, environment)
 
         if configuration['verbose']:
             size = (len(MobilityCommand) ** self.configuration['num_agents'] *
@@ -205,8 +206,8 @@ class QLearning(Controller):
             print(f"QTable size: {size}")
 
         self.last_state = None
-        self.total_cost = 0
-        self.cum_avg_costs = []
+        self.total_reward = 0
+        self.cum_avg_rewards = []
         self.epsilons = []
 
         self.epsilon_start = self.configuration['epsilon_start']
@@ -226,33 +227,20 @@ class QLearning(Controller):
         if self.configuration['plots']:
             self.epsilons.append(self.epsilon)
 
-    def compute_cost(self,
-                     simulation_step: int,
-                     state: State,
-                     ground_station: Node,
-                     agents: list[Node],
-                     sensors: list[Node]):
+    def compute_reward(self, simulation_step):
         if simulation_step == 0:
             return 0
         highest_throughput = (self.configuration['mission_size'] - 1) * (
                     simulation_step / self.configuration['sensor_generation_frequency'])
-        return -ground_station.packets / highest_throughput
+        return self.environment.ground_station.packets / highest_throughput
 
-    def get_control(self,
-                    simulation_step: int,
-                    current_state: State,
-                    current_control: Control,
-                    ground_station: Node,
-                    agents: list[Node],
-                    sensors: list[Node]) -> Control:
-        cost = self.compute_cost(simulation_step, current_state, ground_station, agents, sensors)
-        self.total_cost += cost
+    def get_control(self, simulation_step: int, current_state: State, current_control: Control) -> Control:
+        reward = self.compute_reward(simulation_step)
+        self.total_reward += reward
         if simulation_step > 0 and self.configuration['plots']:
-            self.cum_avg_costs.append(self.total_cost / simulation_step)
+            self.cum_avg_rewards.append(self.total_reward / simulation_step)
 
         if self.training and self.last_state is not None:
-            reward = -cost
-
             previous_qvalue = self.q_table.get_q_value(self.last_state, current_control)
             next_state_qvalue = self.q_table.get_q_value(current_state, self.q_table.get_optimal_control(current_state))
 
@@ -264,7 +252,7 @@ class QLearning(Controller):
             self.decay_epsilon()
 
         if self.training and self.rng.random() < self.epsilon:
-            control = self.environment.generate_random_control(current_state)
+            control = self.environment.generate_random_control()
         else:
             control = self.q_table.get_optimal_control(current_state)
 
@@ -274,7 +262,7 @@ class QLearning(Controller):
 
     def finalize(self):
         if self.configuration['plots']:
-            sns.lineplot(data=self.cum_avg_costs).set(title="Cum Avg Train Cost")
+            sns.lineplot(data=self.cum_avg_rewards).set(title="Cum Avg Train Rewards")
             plt.show()
 
             sns.lineplot(data=self.epsilons).set(title="Epsilons")

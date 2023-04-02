@@ -1,11 +1,7 @@
 from typing import TypedDict
 
 
-class Node:
-    """
-    Simple class representing a node in the simulation. The nodes simply record how many
-    packets they are carrying
-    """
+class GroundStation:
     packets: int
 
     def __init__(self):
@@ -16,7 +12,7 @@ class LifecyclePacket(TypedDict):
     created_at: int
 
 
-class LifecycleNode(Node):
+class Sensor:
     lifecycle_packets: list[LifecyclePacket]
 
     def __init__(self):
@@ -25,3 +21,12 @@ class LifecycleNode(Node):
     @property
     def packets(self):
         return len(self.lifecycle_packets)
+
+
+class Agent:
+    position: int
+    packets: int
+
+    def __init__(self):
+        self.packets = 0
+        self.position = 0
