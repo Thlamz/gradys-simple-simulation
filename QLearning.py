@@ -63,35 +63,35 @@ class SparseQTable(QTable):
 
     def load_q_table(self):
         with self.configuration['qtable_file'].open("rb") as file:
-            q_table_dict: dict = pickle.load(file)
-            self.q_table = defaultdict(lambda: defaultdict(lambda: self.configuration['qtable_initialization_value']))
-            for state, controls in q_table_dict.items():
-                for control, q_value in controls.items():
-                    self.q_table[state][control] = q_value
+            self.q_table: dict = pickle.load(file)
 
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
             self.load_q_table()
         else:
-            self.q_table = defaultdict(lambda: defaultdict(lambda: self.configuration['qtable_initialization_value']))
+            self.q_table = {}
 
     def get_q_value(self, state: State, control: Control) -> float:
+        if state not in self.q_table or control not in self.q_table[state]:
+            return self.configuration['qtable_initialization_value']
         return self.q_table[state][control]
 
     def get_optimal_control(self, state: State) -> Control:
-        optimal_control: Optional[Control] = None
-        optimal_q_value = -math.inf
+        if state in self.q_table:
+            optimal_control: Optional[Control] = None
+            optimal_q_value = -math.inf
 
-        for control, q_value in self.q_table[state].items():
-            if q_value > optimal_q_value:
-                optimal_control = control
-                optimal_q_value = q_value
-        if optimal_control is not None:
-            return optimal_control
-        else:
-            return self.environment.generate_random_control()
+            for control, q_value in self.q_table[state].items():
+                if q_value > optimal_q_value:
+                    optimal_control = control
+                    optimal_q_value = q_value
+            if optimal_control is not None:
+                return optimal_control
+        return self.environment.generate_random_control()
 
     def set_q_value(self, state: State, control: Control, q_value: float):
+        if state not in self.q_table:
+            self.q_table[state] = {}
         self.q_table[state][control] = q_value
 
     def export_qtable(self):

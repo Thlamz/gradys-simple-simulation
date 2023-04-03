@@ -21,6 +21,10 @@ class State(ABC):
     def __hash__(self):
         pass
 
+    @abstractmethod
+    def __eq__(self, other):
+        pass
+
     @classmethod
     @abstractmethod
     def unhash(cls, hash_id: int, configuration: SimulationConfiguration, environment: Environment):
@@ -38,6 +42,9 @@ class MobilityState(State):
 
     def __hash__(self):
         return tuple_to_base_id(tuple(self.mobility), self.configuration['num_agents'])
+
+    def __eq__(self, other):
+        return self.mobility == other.mobility
 
     @classmethod
     def unhash(cls, hash_id: int, configuration: SimulationConfiguration, environment: Environment):
