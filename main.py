@@ -180,7 +180,7 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 
     if multi_processing:
         with multiprocessing.Pool(processes=max_processes) as pool:
-            results = list(pool.map(_run_permutation, enumerate(mapped_permutations)))
+            results = list(pool.map(_run_permutation, enumerate(mapped_permutations), chunksize=1))
     else:
         results = list(map(_run_permutation, enumerate(mapped_permutations)))
 
