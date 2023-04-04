@@ -7,6 +7,7 @@ from functools import reduce
 from pathlib import Path
 from typing import List, Tuple
 
+import numpy as np
 from tqdm import tqdm
 
 from Dadca import Dadca
