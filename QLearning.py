@@ -61,7 +61,7 @@ class SparseQTable(QTable):
 
     def load_q_table(self):
         with self.configuration['qtable_file'].open("r") as file:
-            self.q_table: dict = json.load(file)
+            self.q_table: dict = json.load(file, object_hook=lambda d: {int(k): v for k, v in d.items()})
 
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
