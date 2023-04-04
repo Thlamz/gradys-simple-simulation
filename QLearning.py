@@ -1,4 +1,5 @@
 import itertools
+import json
 import math
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -52,7 +53,7 @@ class SparseQTable(QTable):
     """
     Q Table implementation with a sparse implementation using dictionaries
     """
-    q_table: dict[State, dict[Control, float]]
+    q_table: Dict[int, Dict[int, float]]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
@@ -60,8 +61,8 @@ class SparseQTable(QTable):
         self.initialize_q_table()
 
     def load_q_table(self):
-        with self.configuration['qtable_file'].open("rb") as file:
-            self.q_table: dict = pickle.load(file)
+        with self.configuration['qtable_file'].open("r") as file:
+            self.q_table: dict = json.load(file)
 
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
@@ -70,37 +71,38 @@ class SparseQTable(QTable):
             self.q_table = {}
 
     def get_q_value(self, state: State, control: Control) -> float:
-        if state not in self.q_table or control not in self.q_table[state]:
+        state_id = hash(state)
+        control_id = hash(control)
+        if state_id not in self.q_table or control_id not in self.q_table[state_id]:
             return self.configuration['qtable_initialization_value']
-        return self.q_table[state][control]
+        return self.q_table[state_id][control_id]
 
     def get_optimal_control(self, state: State) -> Control:
-        if state in self.q_table:
-            optimal_control: Optional[Control] = None
+        state_id = hash(state)
+        if state_id in self.q_table:
+            optimal_control: Optional[int] = None
             optimal_q_value = -math.inf
 
-            for control, q_value in self.q_table[state].items():
+            for control, q_value in self.q_table[state_id].items():
                 if q_value > optimal_q_value:
                     optimal_control = control
                     optimal_q_value = q_value
             if optimal_control is not None:
-                return optimal_control
+                control = Control.unhash(optimal_control, self.configuration)
+                test = self.environment.validate_control(control)
+                return control
         return self.environment.generate_random_control()
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        if state not in self.q_table:
-            self.q_table[state] = {}
-        self.q_table[state][control] = q_value
+        state_id = hash(state)
+        if state_id not in self.q_table:
+            self.q_table[state_id] = {}
+        self.q_table[state_id][hash(control)] = q_value
 
     def export_qtable(self):
         if self.configuration['qtable_file'] is not None:
-            with self.configuration['qtable_file'].open("wb") as file:
-                q_table_dict = {
-                    state: {
-                        control: q_value for control, q_value in controls.items()
-                    } for state, controls in self.q_table.items()
-                }
-                pickle.dump(q_table_dict, file)
+            with self.configuration['qtable_file'].open("w") as file:
+                json.dump(self.q_table, file)
 
 
 class DenseQTable(QTable):
