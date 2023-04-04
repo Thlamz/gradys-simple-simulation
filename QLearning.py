@@ -1,9 +1,8 @@
-import itertools
 import json
 import math
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, Literal, Union, Dict, List
+from typing import Optional, Literal, Dict, List
 
 import numpy as np
 import numpy.random
@@ -88,9 +87,7 @@ class SparseQTable(QTable):
                     optimal_control = control
                     optimal_q_value = q_value
             if optimal_control is not None:
-                control = Control.unhash(optimal_control, self.configuration)
-                test = self.environment.validate_control(control)
-                return control
+                return Control.unhash(optimal_control, self.configuration)
         return self.environment.generate_random_control()
 
     def set_q_value(self, state: State, control: Control, q_value: float):
