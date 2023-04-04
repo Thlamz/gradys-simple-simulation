@@ -49,7 +49,7 @@ class MobilityState(State):
 
     @classmethod
     def unhash(cls, hash_id: int, configuration: SimulationConfiguration, environment: Environment):
-        mobility = base_id_to_tuple(hash_id, configuration['num_agents'], configuration['num_agents'])
+        mobility = base_id_to_tuple(hash_id, configuration['mission_size'], configuration['num_agents'])
         state = MobilityState(configuration, environment)
         state.mobility = list(mobility)
         return state
