@@ -25,5 +25,6 @@ class Control:
 
     @classmethod
     def unhash(cls, hash_id: int, configuration: SimulationConfiguration):
-        return Control(base_id_to_tuple(hash_id, len(MobilityCommand), configuration['num_agents']),
+        unhashed_tuple = base_id_to_tuple(hash_id, len(MobilityCommand), configuration['num_agents'])
+        return Control(tuple(MobilityCommand(value) for value in unhashed_tuple),
                        configuration)
