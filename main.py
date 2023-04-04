@@ -153,7 +153,7 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     return results
 
 
-def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool = False, max_processes: int = 4):
+def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool = False, max_processes: int = None):
     """
     Runs a simulation campaign. A campaign is composed by the product of all value variations of the variable keys.
     Simulation results are recorded in a results.json file in the analysis folder.
@@ -180,7 +180,7 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 
     if multi_processing:
         with multiprocessing.Pool(processes=max_processes) as pool:
-            results = list(pool.imap_unordered(_run_permutation, enumerate(mapped_permutations)))
+            results = list(pool.map(_run_permutation, enumerate(mapped_permutations)))
     else:
         results = list(map(_run_permutation, enumerate(mapped_permutations)))
 
