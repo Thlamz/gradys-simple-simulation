@@ -135,7 +135,7 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     index, permutation = argument
     print(f"Running permutation {index} - {permutation}")
 
-    q_table_path = Path(f"./{index}.pickle")
+    q_table_path = Path(f"./{index}.qtable")
     config = {
         **get_default_configuration(),
         **permutation,
