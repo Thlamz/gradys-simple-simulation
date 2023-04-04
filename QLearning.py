@@ -1,10 +1,8 @@
 import itertools
 import math
-import pickle
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Literal, Union
+from typing import Optional, Literal, Union, Dict, List
 
 import numpy as np
 import numpy.random
@@ -109,7 +107,7 @@ class DenseQTable(QTable):
     """
     Dense Q Table implementation that used numpy arrays
     """
-    q_table: numpy.ndarray[float]
+    q_table: numpy.ndarray
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
@@ -171,8 +169,8 @@ class QLearning(Controller):
 
     # Statistic collection
     total_reward: float
-    cum_avg_rewards: list[float]
-    epsilons: list[float]
+    cum_avg_rewards: List[float]
+    epsilons: List[float]
 
     # Configuration variables
     epsilon_start: float

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import NamedTuple
+from typing import NamedTuple, List
 
 from base_serializer import base_id_to_tuple, tuple_to_base_id
 from simulation_configuration import SimulationConfiguration
@@ -15,7 +15,7 @@ class Control:
     The control in this scenario has only one key, mobility. The enum value mobility[i] represents the direction
     agent i will move
     """
-    mobility: list[MobilityCommand]
+    mobility: List[MobilityCommand]
 
     def __init__(self, mobility: tuple, configuration: SimulationConfiguration):
         self.mobility = list(mobility)

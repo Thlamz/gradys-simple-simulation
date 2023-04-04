@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 from base_serializer import tuple_to_base_id, base_id_to_tuple
 from environment import Environment
@@ -32,7 +33,7 @@ class State(ABC):
 
 
 class MobilityState(State):
-    mobility: list[int]
+    mobility: List[int]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
@@ -41,7 +42,7 @@ class MobilityState(State):
             self.mobility.append(agent.position)
 
     def __hash__(self):
-        return tuple_to_base_id(tuple(self.mobility), self.configuration['num_agents'])
+        return tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'])
 
     def __eq__(self, other):
         return self.mobility == other.mobility

@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy
 
 from control import MobilityCommand, Control
@@ -13,8 +15,8 @@ class Environment:
     that are possible for a state. Also offers some utilitary functions
     """
     ground_station: GroundStation
-    agents: list[Agent]
-    sensors: list[Sensor]
+    agents: List[Agent]
+    sensors: List[Sensor]
 
     def __init__(self, configuration: SimulationConfiguration):
         self.configuration = configuration

@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, List
 
 
 class GroundStation:
@@ -13,7 +13,7 @@ class LifecyclePacket(TypedDict):
 
 
 class Sensor:
-    lifecycle_packets: list[LifecyclePacket]
+    lifecycle_packets: List[LifecyclePacket]
 
     def __init__(self):
         self.lifecycle_packets = []

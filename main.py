@@ -5,8 +5,8 @@ import multiprocessing
 import os
 from functools import reduce
 from pathlib import Path
+from typing import List, Tuple
 
-import numpy as np
 from tqdm import tqdm
 
 from Dadca import Dadca
@@ -123,7 +123,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
     }
 
 
-def _run_permutation(argument: tuple[int, dict]) -> list[SimulationResults]:
+def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     """
     Runs a permutation of configuration parameters. This auxiliary function is used
     to run simulation campaigns
@@ -152,7 +152,7 @@ def _run_permutation(argument: tuple[int, dict]) -> list[SimulationResults]:
     return results
 
 
-def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool = False, max_processes: int = 4):
+def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool = False, max_processes: int = 4):
     """
     Runs a simulation campaign. A campaign is composed by the product of all value variations of the variable keys.
     Simulation results are recorded in a results.json file in the analysis folder.
@@ -175,7 +175,7 @@ def run_campaign(inputs: dict, variable_keys: list[str], multi_processing: bool 
     print(f"Running {reduce(lambda a, b: a * b, (len(value) for _key, value in value_ranges))} total permutations \n\n")
 
     mapped_permutations = \
-        map(lambda p: fixed_values | {value_ranges[index][0]: value for index, value in enumerate(p)}, permutations)
+        map(lambda p: {**fixed_values, **{value_ranges[index][0]: value for index, value in enumerate(p)}}, permutations)
 
     if multi_processing:
         with multiprocessing.Pool(processes=max_processes) as pool:

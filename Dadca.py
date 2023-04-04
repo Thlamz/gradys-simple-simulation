@@ -1,6 +1,6 @@
 import itertools
 import math
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, List, Dict, Tuple
 
 from controller import Controller
 from environment import Control, MobilityCommand, Environment
@@ -19,8 +19,8 @@ class Dadca(Controller):
     Controller that implements DADCA
     """
 
-    agent_neighbours: list[list[int, int]]
-    agent_commands: dict[int, DadcaCommand]
+    agent_neighbours: List[list]
+    agent_commands: Dict[int, DadcaCommand]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
@@ -35,7 +35,7 @@ class Dadca(Controller):
             current_control = Control(tuple(mobility), self.configuration)
             new_mobility_commands = mobility.copy()
 
-        combination: tuple[tuple[int, Agent], tuple[int, Agent]]
+        combination: Tuple[Tuple[int, Agent], Tuple[int, Agent]]
         for combination in itertools.combinations(enumerate(self.environment.agents), 2):
             index1, agent1 = combination[0]
             index2, agent2 = combination[1]
