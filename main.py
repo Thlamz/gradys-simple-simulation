@@ -201,6 +201,6 @@ if __name__ == '__main__':
         'sensor_generation_probability': 1,
         'sensor_packet_lifecycle': math.inf,
         'controller': [QLearning, Dadca],
-        'maximum_simulation_steps': [int(n) for n in np.linspace(0, 10_000_000, 50)],
+        'maximum_simulation_steps': [int(n) for n in np.linspace(1, 10_000_000, 50)],
         'repetitions': [1, 2, 3, 5],
     }, ['maximum_simulation_steps', 'repetitions', 'controller'], multi_processing=True)
