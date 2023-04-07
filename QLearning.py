@@ -225,11 +225,7 @@ class QLearning(Controller):
             self.epsilons.append(self.epsilon)
 
     def compute_reward(self, simulation_step):
-        if simulation_step == 0:
-            return 0
-        highest_throughput = (self.configuration['mission_size'] - 1) * (
-                    simulation_step / self.configuration['sensor_generation_frequency'])
-        return self.environment.ground_station.packets / highest_throughput
+        return self.configuration['reward_function'](self, simulation_step)
 
     def get_control(self, simulation_step: int, current_state: State, current_control: Control) -> Control:
         reward = self.compute_reward(simulation_step)

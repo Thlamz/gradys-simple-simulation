@@ -22,6 +22,7 @@ class SimulationConfiguration(TypedDict):
     epsilon_end: float
     learning_rate: float
     gamma: float
+    reward_function: Callable
     qtable_initialization_value: float
     qtable_file: Union[Path, None]
     qtable_format: Literal['sparse', 'dense']

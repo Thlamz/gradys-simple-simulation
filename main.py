@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from Dadca import Dadca
 from QLearning import QLearning
+from rewards import throughput_reward, delivery_reward
 from simulation import Simulation
 
 import seaborn as sns
@@ -39,6 +40,7 @@ def get_default_configuration() -> SimulationConfiguration:
         'epsilon_end': 0.001,
         'learning_rate': 0.1,
         'gamma': 0.99,
+        'reward_function': throughput_reward,
         'qtable_initialization_value': 0,
         'qtable_file': None,
         'qtable_format': 'sparse',
