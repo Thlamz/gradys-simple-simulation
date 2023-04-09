@@ -2,9 +2,9 @@ from typing import Optional
 
 import numpy
 
-from control import Control
+from control import Control, MobilityCommand, validate_control, execute_control
 from controller import Controller
-from environment import MobilityCommand, Environment
+from environment import Environment
 from simulation_configuration import SimulationConfiguration
 from state import State
 
@@ -42,10 +42,10 @@ class Simulation:
     def simulate(self):
         """ Runs a single simulation step """
         self.U = self.controller.get_control(self.simulation_step, self.X, self.U)
-        if not self.environment.validate_control(self.U):
+        if not validate_control(self.U, self.configuration, self.environment):
             raise SimulationException("Invalid control")
 
-        self.environment.execute_control(self.U)
+        execute_control(self.U, self.configuration, self.environment)
 
         # Simulating sensor packet generation
         if self.simulation_step % self.configuration['sensor_generation_frequency'] == 0:

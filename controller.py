@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from environment import Control, Environment
+from control import Control
+from environment import Environment
 from simulation_configuration import SimulationConfiguration
 from state import State
 

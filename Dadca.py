@@ -2,8 +2,9 @@ import itertools
 import math
 from typing import TypedDict, Optional, List, Dict, Tuple
 
+from control import MobilityCommand, Control
 from controller import Controller
-from environment import Control, MobilityCommand, Environment
+from environment import Environment
 from node import Agent
 from simulation_configuration import SimulationConfiguration
 from state import State

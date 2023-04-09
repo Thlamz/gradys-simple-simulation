@@ -7,11 +7,7 @@ from serializable import IntSerializable
 from simulation_configuration import SimulationConfiguration
 
 
-class State(ABC):
-    """
-    The state in this scenario has only one key, mobility. It is a tuple of integers where each integer
-    mobility[i] represents the waypoint position o agent i
-    """
+class State(IntSerializable):
     configuration: SimulationConfiguration
     environment: Environment
 
@@ -23,8 +19,22 @@ class State(ABC):
     def __eq__(self, other):
         pass
 
+    @abstractmethod
+    def serialize(self) -> int:
+        pass
 
-class MobilityState(State, IntSerializable):
+    @classmethod
+    @abstractmethod
+    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
+        pass
+
+
+class MobilityState(State):
+    """
+    The state in this scenario has only one key, mobility. It is a tuple of integers where each integer
+    mobility[i] represents the waypoint position o agent i
+    """
+
     mobility: List[int]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):

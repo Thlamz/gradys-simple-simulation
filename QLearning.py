@@ -7,8 +7,9 @@ from typing import Optional, Literal, Dict, List
 import numpy as np
 import numpy.random
 
+from control import Control, MobilityCommand, generate_random_control
 from controller import Controller
-from environment import Control, MobilityCommand, Environment
+from environment import Environment
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -70,14 +71,14 @@ class SparseQTable(QTable):
             self.q_table = {}
 
     def get_q_value(self, state: State, control: Control) -> float:
-        state_id = hash(state)
-        control_id = hash(control)
+        state_id = state.serialize()
+        control_id = control.serialize()
         if state_id not in self.q_table or control_id not in self.q_table[state_id]:
             return self.configuration['qtable_initialization_value']
         return self.q_table[state_id][control_id]
 
     def get_optimal_control(self, state: State) -> Control:
-        state_id = hash(state)
+        state_id = state.serialize()
         if state_id in self.q_table:
             optimal_control: Optional[int] = None
             optimal_q_value = -math.inf
@@ -87,14 +88,14 @@ class SparseQTable(QTable):
                     optimal_control = control
                     optimal_q_value = q_value
             if optimal_control is not None:
-                return Control.unhash(optimal_control, self.configuration)
-        return self.environment.generate_random_control()
+                return Control.deserialize(optimal_control, self.configuration, self.environment)
+        return generate_random_control(self.configuration, self.environment)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        state_id = hash(state)
+        state_id = state.serialize()
         if state_id not in self.q_table:
             self.q_table[state_id] = {}
-        self.q_table[state_id][hash(control)] = q_value
+        self.q_table[state_id][control.serialize()] = q_value
 
     def export_qtable(self):
         if self.configuration['qtable_file'] is not None:
@@ -126,18 +127,18 @@ class DenseQTable(QTable):
                                    dtype=float)
 
     def get_q_value(self, state: State, control: Control) -> float:
-        return self.q_table[hash(state), hash(control)]
+        return self.q_table[hash(state), control.serialize()]
 
     def get_optimal_control(self, state: State) -> Control:
-        if np.any(self.q_table[hash(state), :] > self.configuration['qtable_initialization_value']):
-            hash_id = np.argmax(self.q_table[hash(state), :])
-            return Control.unhash(hash_id, self.configuration)
+        if np.any(self.q_table[state.serialize(), :] > self.configuration['qtable_initialization_value']):
+            hash_id = np.argmax(self.q_table[state.serialize(), :])
+            return Control.deserialize(hash_id, self.configuration, self.environment)
         else:
-            return self.environment.generate_random_control()
+            return generate_random_control(self.configuration, self.environment)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        state_id = hash(state)
-        control_id = hash(control)
+        state_id = state.serialize()
+        control_id = control.serialize()
         self.q_table[state_id, control_id] = q_value
 
     def export_qtable(self):
@@ -247,7 +248,7 @@ class QLearning(Controller):
             self.decay_epsilon()
 
         if self.training and self.rng.random() < self.epsilon:
-            control = self.environment.generate_random_control()
+            control = generate_random_control(self.configuration, self.environment)
         else:
             control = self.q_table.get_optimal_control(current_state)
 
