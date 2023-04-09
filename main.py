@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from Dadca import Dadca
 from QLearning import QLearning
-from rewards import throughput_reward, delivery_reward
+from rewards import throughput_reward, delivery_reward, movement_reward
 from simulation import Simulation
 
 import seaborn as sns
@@ -82,7 +82,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         if configuration['step_by_step']:
             print("---------------------")
             print(f"Ground Station: {simulation.environment.ground_station.packets}")
-            print(f"Sensors: [{', '.join(str(sensor.packets) for sensor in simulation.environment.sensors)}]")
+            print(f"Sensors: [{', '.join(str(sensor.num_packets(simulation.simulation_step, configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
             agent_string = ""
             for i in range(configuration['mission_size']):
                 agent_string += "-("
@@ -102,7 +102,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
 
             throughputs.append(simulation.environment.ground_station.packets / simulation.simulation_step)
 
-    simulation.controller.finalize()
+    controller_results = simulation.controller.finalize()
 
     if configuration['plots']:
         sns.lineplot(data=throughputs).set(title='Throughput')
@@ -123,7 +123,8 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         'avg_throughput': throughput_sum / simulation.simulation_step,
         'config': {
             key: str(value) for key, value in configuration.items()
-        }
+        },
+        'controller': controller_results
     }
 
 
@@ -138,7 +139,7 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     index, permutation = argument
     print(f"Running permutation {index} - {permutation}")
 
-    q_table_path = Path(f"./{index}.qtable")
+    q_table_path = Path(f"./{index}.json")
     config = {
         **get_default_configuration(),
         **permutation,

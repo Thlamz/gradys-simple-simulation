@@ -15,7 +15,11 @@ def delivery_reward(self: QLearning, simulation_step):
         self.last_gs_packets = self.environment.ground_station.packets
         return 0
 
-    if gs_packets - self.last_gs_packets:
+    if gs_packets - self.last_gs_packets > 0:
         return 1
     else:
         return 0
+
+
+def movement_reward(self: QLearning, simulation_step):
+    return sum(agent.position for agent in self.environment.agents) / (len(self.environment.agents) * self.configuration['mission_size'])

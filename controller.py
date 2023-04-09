@@ -22,5 +22,5 @@ class Controller(ABC):
     def get_control(self, simulation_step: int, current_state: State, current_control: Optional[Control]) -> Control:
         pass
 
-    def finalize(self):
-        pass
+    def finalize(self) -> dict:
+        return {}

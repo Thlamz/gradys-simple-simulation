@@ -237,8 +237,10 @@ class QLearning(Controller):
             previous_qvalue = self.q_table.get_q_value(self.last_state, current_control)
             next_state_qvalue = self.q_table.get_q_value(current_state, self.q_table.get_optimal_control(current_state))
 
-            q_value = ((1 - self.learning_rate) * previous_qvalue
-                       + self.learning_rate * (reward + self.gamma * next_state_qvalue))
+            # q_value = ((1 - self.learning_rate) * previous_qvalue
+            #            + self.learning_rate * (reward + self.gamma * next_state_qvalue))
+
+            q_value = previous_qvalue + self.learning_rate * (reward + self.gamma * next_state_qvalue - previous_qvalue)
 
             self.q_table.set_q_value(self.last_state, current_control, q_value)
 
@@ -261,3 +263,6 @@ class QLearning(Controller):
             sns.lineplot(data=self.epsilons).set(title="Epsilons")
             plt.show()
         self.q_table.export_qtable()
+        return {
+            'avg_reward': self.total_reward / self.configuration['maximum_simulation_steps']
+        }

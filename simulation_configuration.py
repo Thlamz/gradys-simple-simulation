@@ -39,3 +39,4 @@ class SimulationResults(TypedDict):
     expected_throughput: float
     avg_throughput: float
     config: SimulationConfiguration
+    controller: dict
