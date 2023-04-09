@@ -3,6 +3,7 @@ from typing import List
 
 from base_serializer import tuple_to_base_id, base_id_to_tuple
 from environment import Environment
+from serializable import IntSerializable
 from simulation_configuration import SimulationConfiguration
 
 
@@ -19,20 +20,11 @@ class State(ABC):
         self.environment = environment
 
     @abstractmethod
-    def __hash__(self):
-        pass
-
-    @abstractmethod
     def __eq__(self, other):
         pass
 
-    @classmethod
-    @abstractmethod
-    def unhash(cls, hash_id: int, configuration: SimulationConfiguration, environment: Environment):
-        pass
 
-
-class MobilityState(State):
+class MobilityState(State, IntSerializable):
     mobility: List[int]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
@@ -41,15 +33,15 @@ class MobilityState(State):
         for agent in environment.agents:
             self.mobility.append(agent.position)
 
-    def __hash__(self):
+    def serialize(self) -> int:
         return tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'])
 
     def __eq__(self, other):
         return self.mobility == other.mobility
 
     @classmethod
-    def unhash(cls, hash_id: int, configuration: SimulationConfiguration, environment: Environment):
-        mobility = base_id_to_tuple(hash_id, configuration['mission_size'], configuration['num_agents'])
+    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
+        mobility = base_id_to_tuple(serialized, configuration['mission_size'], configuration['num_agents'])
         state = MobilityState(configuration, environment)
         state.mobility = list(mobility)
         return state
