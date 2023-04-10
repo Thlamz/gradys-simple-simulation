@@ -20,7 +20,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from simulation_configuration import SimulationConfiguration, SimulationResults
-from state import MobilityState
+from state import MobilityState, SignedMobilityState
 
 
 def get_default_configuration() -> SimulationConfiguration:
@@ -199,11 +199,14 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': 4,
-        'mission_size': 200,
+        'num_agents': 1,
+        'mission_size': [200],
         'sensor_generation_probability': 1,
         'sensor_packet_lifecycle': math.inf,
-        'controller': [QLearning, Dadca],
-        'maximum_simulation_steps': [int(n) for n in np.linspace(1, 10_000_000, 50)],
-        'repetitions': [1, 2, 3, 5],
-    }, ['maximum_simulation_steps', 'repetitions', 'controller'], multi_processing=True)
+        'controller': QLearning,
+        'reward_function': movement_reward,
+        'state': SignedMobilityState,
+        'maximum_simulation_steps': 1_000_000,
+        'epsilon_end': 0.8,
+        'plots': True
+    }, ['mission_size'])

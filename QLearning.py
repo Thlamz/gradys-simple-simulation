@@ -120,7 +120,7 @@ class DenseQTable(QTable):
         if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
             self.load_q_table()
         else:
-            possible_states = self.configuration['mission_size'] ** self.configuration['num_agents']
+            possible_states = self.configuration['state'].possible_states(self.configuration, self.environment)
             possible_actions = len(MobilityCommand) ** self.configuration['num_agents']
             self.q_table = np.full((possible_states, possible_actions),
                                    self.configuration['qtable_initialization_value'],
@@ -199,9 +199,9 @@ class QLearning(Controller):
             else DenseQTable(configuration, environment)
 
         if configuration['verbose']:
-            size = (len(MobilityCommand) ** self.configuration['num_agents'] *
-                    self.configuration['mission_size'] ** self.configuration['num_agents'])
-            print(f"QTable size: {size}")
+            state_size = configuration['state'].possible_states(configuration, environment)
+            control_size = len(MobilityCommand) ** configuration['num_agents']
+            print(f"QTable size: {state_size * control_size}")
 
         self.last_state = None
         self.total_reward = 0
@@ -238,10 +238,10 @@ class QLearning(Controller):
             previous_qvalue = self.q_table.get_q_value(self.last_state, current_control)
             next_state_qvalue = self.q_table.get_q_value(current_state, self.q_table.get_optimal_control(current_state))
 
-            # q_value = ((1 - self.learning_rate) * previous_qvalue
-            #            + self.learning_rate * (reward + self.gamma * next_state_qvalue))
+            q_value = ((1 - self.learning_rate) * previous_qvalue
+                       + self.learning_rate * (reward + self.gamma * next_state_qvalue))
 
-            q_value = previous_qvalue + self.learning_rate * (reward + self.gamma * next_state_qvalue - previous_qvalue)
+            #q_value = previous_qvalue + self.learning_rate * (reward + self.gamma * next_state_qvalue - previous_qvalue)
 
             self.q_table.set_q_value(self.last_state, current_control, q_value)
 

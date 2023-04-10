@@ -28,6 +28,11 @@ class State(IntSerializable):
     def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
         pass
 
+    @classmethod
+    @abstractmethod
+    def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        pass
+
 
 class MobilityState(State):
     """
@@ -55,3 +60,41 @@ class MobilityState(State):
         state = MobilityState(configuration, environment)
         state.mobility = list(mobility)
         return state
+
+    @classmethod
+    def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        return configuration['mission_size'] ** configuration['num_agents']
+
+
+class SignedMobilityState(State):
+    """
+    The state in this scenario has only one key, mobility. It is a tuple of integers where each integer
+    mobility[i] represents the waypoint position o agent i
+    """
+
+    mobility: List[int]
+
+    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
+        super().__init__(configuration, environment)
+        self.mobility = []
+        for agent in environment.agents:
+            self.mobility.append(agent.position
+                                 if not agent.reversed
+                                 else self.configuration['mission_size'] + agent.position)
+
+    def serialize(self) -> int:
+        return tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'] * 2)
+
+    def __eq__(self, other):
+        return self.mobility == other.mobility
+
+    @classmethod
+    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
+        mobility = base_id_to_tuple(serialized, configuration['mission_size'] * 2, configuration['num_agents'])
+        state = MobilityState(configuration, environment)
+        state.mobility = list(mobility)
+        return state
+
+    @classmethod
+    def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        return configuration['mission_size'] ** configuration['num_agents'] * 2
