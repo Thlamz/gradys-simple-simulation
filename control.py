@@ -80,5 +80,7 @@ def execute_control(control: Control, _configuration: SimulationConfiguration, e
     for agent, command in zip(environment.agents, control.mobility):
         if command == MobilityCommand.FORWARDS:
             agent.position += 1
+            agent.reversed = False
         else:
             agent.position -= 1
+            agent.reversed = True
