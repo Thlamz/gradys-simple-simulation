@@ -13,14 +13,14 @@ from tqdm import tqdm
 
 from Dadca import Dadca
 from QLearning import QLearning
-from rewards import throughput_reward, delivery_reward, movement_reward
+from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward
 from simulation import Simulation
 
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 from simulation_configuration import SimulationConfiguration, SimulationResults
-from state import MobilityState, SignedMobilityState
+from state import MobilityState, SignedMobilityState, CommunicationMobilityState
 
 
 def get_default_configuration() -> SimulationConfiguration:
@@ -82,7 +82,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         if configuration['step_by_step']:
             print("---------------------")
             print(f"Ground Station: {simulation.environment.ground_station.packets}")
-            print(f"Sensors: [{', '.join(str(sensor.num_packets(simulation.simulation_step, configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
+            print(f"Sensors: [{', '.join(str(sensor.count_update_packets(simulation.simulation_step, configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
             agent_string = ""
             for i in range(configuration['mission_size']):
                 agent_string += "-("
@@ -110,7 +110,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
 
         plt.figure(figsize=(50, 8))
         sns.lineplot(data=agent_positions)
-        sns.lineplot().set(title='Agent Positions')
+        sns.lineplot().set(title='Agent Positions', ylim=(0, configuration['mission_size'] - 1))
         plt.show()
 
     if configuration['verbose']:
@@ -200,13 +200,11 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': 1,
-        'mission_size': [200],
-        'sensor_generation_probability': 1,
+        'mission_size': 10,
+        'sensor_generation_probability': 0.6,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
-        'reward_function': movement_reward,
-        'state': SignedMobilityState,
-        'maximum_simulation_steps': 1_000_000,
-        'epsilon_end': 0.8,
-        'plots': True
-    }, ['mission_size'])
+        'reward_function': throughput_reward,
+        'state': CommunicationMobilityState,
+        'maximum_simulation_steps': [100_000],
+    }, ['maximum_simulation_steps'])

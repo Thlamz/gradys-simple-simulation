@@ -127,14 +127,11 @@ class DenseQTable(QTable):
                                    dtype=float)
 
     def get_q_value(self, state: State, control: Control) -> float:
-        return self.q_table[hash(state), control.serialize()]
+        return self.q_table[state.serialize(), control.serialize()]
 
     def get_optimal_control(self, state: State) -> Control:
-        if np.any(self.q_table[state.serialize(), :] > self.configuration['qtable_initialization_value']):
-            hash_id = np.argmax(self.q_table[state.serialize(), :])
-            return Control.deserialize(hash_id, self.configuration, self.environment)
-        else:
-            return generate_random_control(self.configuration, self.environment)
+        hash_id = np.argmax(self.q_table[state.serialize(), :])
+        return Control.deserialize(hash_id, self.configuration, self.environment)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
         state_id = state.serialize()
@@ -240,8 +237,6 @@ class QLearning(Controller):
 
             q_value = ((1 - self.learning_rate) * previous_qvalue
                        + self.learning_rate * (reward + self.gamma * next_state_qvalue))
-
-            #q_value = previous_qvalue + self.learning_rate * (reward + self.gamma * next_state_qvalue - previous_qvalue)
 
             self.q_table.set_q_value(self.last_state, current_control, q_value)
 

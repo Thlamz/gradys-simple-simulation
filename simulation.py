@@ -52,7 +52,7 @@ class Simulation:
             probabilities = self.rng.random(size=self.configuration['mission_size'] - 1)
             for sensor, probability in zip(self.environment.sensors, probabilities):
                 if probability < self.configuration['sensor_generation_probability']:
-                    sensor.add_packet(self.simulation_step, self.configuration['sensor_packet_lifecycle'])
+                    sensor.add_packet(self.simulation_step)
 
         # Simulate message exchange
         for index1, agent1 in enumerate(self.environment.agents):
@@ -75,8 +75,7 @@ class Simulation:
                 self.environment.ground_station.packets += agent.packets
                 agent.packets = 0
             else:
-                agent.packets += self.environment.sensors[agent_mobility - 1].num_packets(self.simulation_step,
-                                                                                          self.configuration['sensor_packet_lifecycle'])
+                agent.packets += self.environment.sensors[agent_mobility - 1].count_update_packets(self.simulation_step)
                 self.environment.sensors[agent_mobility - 1].clear_packets()
 
         self.X = self.configuration['state'](self.configuration, self.environment)

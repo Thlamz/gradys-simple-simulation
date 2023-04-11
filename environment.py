@@ -22,7 +22,7 @@ class Environment:
         self.sensors = []
 
         for _ in range(1, configuration['mission_size']):
-            self.sensors.append(Sensor())
+            self.sensors.append(Sensor(self.configuration))
 
         for _ in range(configuration['num_agents']):
             self.agents.append(Agent())
