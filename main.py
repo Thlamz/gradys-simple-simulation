@@ -3,7 +3,6 @@ import json
 import math
 import multiprocessing
 import os
-import tracemalloc
 from functools import reduce
 from pathlib import Path
 from typing import List, Tuple

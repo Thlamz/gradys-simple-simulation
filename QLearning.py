@@ -53,7 +53,7 @@ class SparseQTable(QTable):
     """
     Q Table implementation with a sparse implementation using dictionaries
     """
-    q_table: Dict[int, Dict[int, float]]
+    q_table: Dict[State, Dict[Control, float]]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
@@ -63,6 +63,12 @@ class SparseQTable(QTable):
     def load_q_table(self):
         with self.configuration['qtable_file'].open("r") as file:
             self.q_table: dict = json.load(file, object_hook=lambda d: {int(k): v for k, v in d.items()})
+            state_class = self.configuration['state']
+            self.q_table = {
+                state_class.deserialize(state, self.configuration, self.environment): {
+                    Control.deserialize(control, self.configuration, self.environment): q for control, q in value.items()
+                } for state, value in self.q_table.items()
+            }
 
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
@@ -71,36 +77,42 @@ class SparseQTable(QTable):
             self.q_table = {}
 
     def get_q_value(self, state: State, control: Control) -> float:
-        state_id = state.serialize()
-        control_id = control.serialize()
-        if state_id not in self.q_table or control_id not in self.q_table[state_id]:
+        try:
+            return self.q_table[state][control]
+        except KeyError:
             return self.configuration['qtable_initialization_value']
-        return self.q_table[state_id][control_id]
 
     def get_optimal_control(self, state: State) -> Control:
-        state_id = state.serialize()
-        if state_id in self.q_table:
-            optimal_control: Optional[int] = None
+        try:
+            optimal_control: Optional[Control] = None
             optimal_q_value = -math.inf
 
-            for control, q_value in self.q_table[state_id].items():
+            for control, q_value in self.q_table[state].items():
                 if q_value > optimal_q_value:
                     optimal_control = control
                     optimal_q_value = q_value
             if optimal_control is not None:
-                return Control.deserialize(optimal_control, self.configuration, self.environment)
-        return generate_random_control(self.configuration, self.environment)
+                return optimal_control
+        except KeyError:
+            return generate_random_control(self.configuration, self.environment)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
-        state_id = state.serialize()
-        if state_id not in self.q_table:
-            self.q_table[state_id] = {}
-        self.q_table[state_id][control.serialize()] = q_value
+        # Optimization: Raising exception is faster than checking is the key exists at every call
+        try:
+            self.q_table[state][control] = q_value
+        except KeyError:
+            self.q_table[state] = {}
+            self.q_table[state][control] = q_value
 
     def export_qtable(self):
         if self.configuration['qtable_file'] is not None:
             with self.configuration['qtable_file'].open("w") as file:
-                json.dump(self.q_table, file)
+                serialized_qtable = {
+                    state.serialize(): {
+                        control.serialize(): q for control, q in value.items()
+                    } for state, value in self.q_table.items()
+                }
+                json.dump(serialized_qtable, file)
 
 
 class DenseQTable(QTable):
@@ -160,9 +172,10 @@ class QLearning(Controller):
 
     # Variables updated during execution
     last_state: Optional[State]
+    last_q_value: float
     epsilon: float
     q_table: QTable
-    """QTable class implementing QTable operations"""
+
 
     # Statistic collection
     total_reward: float
@@ -201,6 +214,7 @@ class QLearning(Controller):
             print(f"QTable size: {state_size * control_size}")
 
         self.last_state = None
+        self.last_q_value = self.configuration['qtable_initialization_value']
         self.total_reward = 0
         self.cum_avg_rewards = []
         self.epsilons = []
@@ -232,11 +246,12 @@ class QLearning(Controller):
             self.cum_avg_rewards.append(self.total_reward / simulation_step)
 
         if self.training and self.last_state is not None:
-            previous_qvalue = self.q_table.get_q_value(self.last_state, current_control)
-            next_state_qvalue = self.q_table.get_q_value(current_state, self.q_table.get_optimal_control(current_state))
+            next_state_optimal_control = self.q_table.get_optimal_control(current_state)
+            next_state_qvalue = self.q_table.get_q_value(current_state, next_state_optimal_control)
 
-            q_value = ((1 - self.learning_rate) * previous_qvalue
+            q_value = ((1 - self.learning_rate) * self.last_q_value
                        + self.learning_rate * (reward + self.gamma * next_state_qvalue))
+            self.last_q_value = q_value
 
             self.q_table.set_q_value(self.last_state, current_control, q_value)
 
@@ -245,7 +260,11 @@ class QLearning(Controller):
         if self.training and self.rng.random() < self.epsilon:
             control = generate_random_control(self.configuration, self.environment)
         else:
-            control = self.q_table.get_optimal_control(current_state)
+            # Optimization: Tries to use previously calculated optimal control before picking new one
+            try:
+                control = next_state_optimal_control
+            except NameError:
+                control = self.q_table.get_optimal_control(current_state)
 
         self.last_state = current_state
 

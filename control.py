@@ -30,6 +30,9 @@ class Control(IntSerializable):
     def __eq__(self, other):
         return self.mobility == other.mobility
 
+    def __hash__(self):
+        return hash(tuple(self.mobility))
+
     @classmethod
     def deserialize(cls, serialized: int, configuration: SimulationConfiguration, _environment):
         deserialized_value = base_id_to_tuple(serialized, len(MobilityCommand), configuration['num_agents'])
@@ -53,12 +56,23 @@ def validate_control(control: Control, configuration: SimulationConfiguration, e
 
 rng = numpy.random.default_rng()
 
+rng_batch = []
+
+# Optimization: Batching RNG generation for better performance
+def _command_rng(count) -> List[int]:
+    global rng_batch
+    if len(rng_batch) < count:
+        rng_batch = rng.integers(0, len(MobilityCommand), 1_000_000)
+    batch = rng_batch[-count:]
+    rng_batch = rng_batch[:-count]
+    return batch
+
 
 def generate_random_control(configuration: SimulationConfiguration, environment: Environment) -> Control:
     """
     Generates a random, valid, control
     """
-    mobility_choices = rng.integers(0, len(MobilityCommand), configuration['num_agents'])
+    mobility_choices = _command_rng(configuration['num_agents'])
     mobility_control = [MobilityCommand(i) for i in mobility_choices]
 
     for index, control in enumerate(mobility_control):

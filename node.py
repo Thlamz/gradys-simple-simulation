@@ -20,6 +20,8 @@ class Sensor:
     def __init__(self, configuration: SimulationConfiguration):
         self.configuration = configuration
 
+        self.uses_lifecycle = math.isinf(self.configuration['sensor_packet_lifecycle'])
+
         self._lifecycle_packets = deque()
         self._packets = 0
 
@@ -28,21 +30,21 @@ class Sensor:
             deque.popleft(self._lifecycle_packets)
 
     def add_packet(self, simulation_step):
-        if math.isinf(self.configuration['sensor_packet_lifecycle']):
+        if self.uses_lifecycle:
             self._packets += 1
         else:
             self._validate_packets(simulation_step)
             self._lifecycle_packets.append(simulation_step)
 
     def count_update_packets(self, simulation_step):
-        if math.isinf(self.configuration['sensor_packet_lifecycle']):
+        if self.uses_lifecycle:
             return self._packets
         else:
             self._validate_packets(simulation_step)
             return len(self._lifecycle_packets)
 
     def count_packets(self):
-        if math.isinf(self.configuration['sensor_packet_lifecycle']):
+        if self.uses_lifecycle:
             return self._packets
         else:
             return len(self._lifecycle_packets)

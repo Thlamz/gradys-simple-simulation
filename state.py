@@ -8,15 +8,13 @@ from simulation_configuration import SimulationConfiguration
 
 
 class State(IntSerializable):
-    configuration: SimulationConfiguration
-    environment: Environment
-
-    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        self.configuration = configuration
-        self.environment = environment
 
     @abstractmethod
     def __eq__(self, other):
+        pass
+
+    @abstractmethod
+    def __hash__(self):
         pass
 
     @abstractmethod
@@ -43,16 +41,17 @@ class MobilityState(State):
     mobility: List[int]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        super().__init__(configuration, environment)
-        self.mobility = []
-        for agent in environment.agents:
-            self.mobility.append(agent.position)
+        self.configuration = configuration
+        self.mobility = [agent.position for agent in environment.agents]
 
     def serialize(self) -> int:
         return tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'])
 
     def __eq__(self, other):
         return self.mobility == other.mobility
+
+    def __hash__(self):
+        return hash(tuple(self.mobility))
 
     @classmethod
     def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
@@ -75,15 +74,18 @@ class SignedMobilityState(State):
     mobility: List[int]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        super().__init__(configuration, environment)
-        self.mobility = []
-        for agent in environment.agents:
-            self.mobility.append(agent.position
-                                 if not agent.reversed
-                                 else self.configuration['mission_size'] + agent.position)
+        self.configuration = configuration
+
+        self.mobility = [agent.position
+                         if agent.reversed
+                         else self.configuration['mission_size'] + agent.position for agent in environment.agents]
 
     def serialize(self) -> int:
-        return tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'] * 2)
+        serialized = tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'] * 2)
+        return serialized
+
+    def __hash__(self):
+        return hash(tuple(self.mobility))
 
     def __eq__(self, other):
         return self.mobility == other.mobility
@@ -91,13 +93,13 @@ class SignedMobilityState(State):
     @classmethod
     def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
         mobility = base_id_to_tuple(serialized, configuration['mission_size'] * 2, configuration['num_agents'])
-        state = MobilityState(configuration, environment)
+        state = SignedMobilityState(configuration, environment)
         state.mobility = list(mobility)
         return state
 
     @classmethod
     def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
-        return configuration['mission_size'] ** configuration['num_agents'] * 2
+        return (configuration['mission_size'] * 2) ** configuration['num_agents']
 
 
 class CommunicationMobilityState(State):
@@ -105,15 +107,13 @@ class CommunicationMobilityState(State):
     communication: List[int]
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        super().__init__(configuration, environment)
+        self.configuration = configuration
 
-        self.mobility = []
-        self.communication = []
-        for agent in environment.agents:
-            self.mobility.append(agent.position)
+        self.mobility = [agent.position for agent in environment.agents]
+        self.communication = [1 if sensor.count_packets() > 0 else 0 for sensor in environment.sensors]
 
-        for sensor in environment.sensors:
-            self.communication.append(1 if sensor.count_packets() > 0 else 0)
+    def __hash__(self):
+        return hash(tuple(self.mobility)) + hash(tuple(self.communication))
 
     def __eq__(self, other):
         return self.mobility == other.mobility and self.communication == other.communication
@@ -138,7 +138,7 @@ class CommunicationMobilityState(State):
         mobility = base_id_to_tuple(mobility_serialized, configuration['mission_size'], configuration['num_agents'])
         communication = base_id_to_tuple(communication_serialized, 2, configuration['mission_size'] - 1)
 
-        state = State(configuration, environment)
+        state = CommunicationMobilityState(configuration, environment)
         state.mobility = mobility
         state.communication = communication
         return state
@@ -148,4 +148,3 @@ class CommunicationMobilityState(State):
         mobility_count = configuration['mission_size'] ** configuration['num_agents']
         communication_count = 2 ** (configuration['mission_size'] - 1)
         return mobility_count * communication_count
-
