@@ -148,8 +148,12 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     results = [run_simulation(config)]
     if config['controller'] == QLearning:
         print(f"Running testing for permutation {index} - {permutation}")
-        config['training'] = False
-        results.append(run_simulation(config))
+        test_config = config.copy()
+        test_config['training'] = False
+        test_config['maximum_simulation_steps'] = 10_000
+        test_results = run_simulation(test_config)
+        test_results['config'] = config
+        results.append(test_results)
         os.unlink(q_table_path)
 
     print(f"Finished running permutation {index}\n\n")
