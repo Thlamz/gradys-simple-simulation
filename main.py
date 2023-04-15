@@ -203,7 +203,8 @@ if __name__ == '__main__':
         'sensor_generation_probability': 0.6,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
-        'reward_function': throughput_reward,
-        'state': CommunicationMobilityState,
-        'maximum_simulation_steps': [100_000],
-    }, ['maximum_simulation_steps'])
+        'reward_function': movement_reward,
+        'state': SignedMobilityState,
+        'maximum_simulation_steps': [int(n) for n in np.linspace(1, 10_000_000, 100)],
+        'repetitions': [0, 1, 2, 3, 4],
+    }, ['maximum_simulation_steps', 'repetitions'])
