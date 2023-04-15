@@ -208,12 +208,14 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': 1,
-        'mission_size': [10, 40, 80, 120, 200],
+        'mission_size': [10, 80, 150],
         'sensor_generation_probability': 0.6,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
         'reward_function': throughput_reward,
         'state': [MobilityState, SignedMobilityState, CommunicationMobilityState],
-        'maximum_simulation_steps': [int(n) for n in np.linspace(1, 1_000_000, 100)],
-        'repetitions': [0, 1, 2, 3, 4],
-    }, ['maximum_simulation_steps', 'state', 'mission_size', 'repetitions'], multi_processing=True)
+        'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 50)],
+        'learning_rate': [0.1, 0.6],
+        'repetitions': [0, 1, 2],
+    }, ['maximum_simulation_steps', 'state', 'mission_size', 'repetitions', 'learning_rate'], multi_processing=True)
+
