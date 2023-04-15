@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -18,12 +19,12 @@ class State(IntSerializable):
         pass
 
     @abstractmethod
-    def serialize(self) -> int:
+    def serialize(self) -> str:
         pass
 
     @classmethod
     @abstractmethod
-    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
+    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
         pass
 
     @classmethod
@@ -44,8 +45,8 @@ class MobilityState(State):
         self.configuration = configuration
         self.mobility = [agent.position for agent in environment.agents]
 
-    def serialize(self) -> int:
-        return tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'])
+    def serialize(self) -> str:
+        return json.dumps(self.mobility)
 
     def __eq__(self, other):
         return self.mobility == other.mobility
@@ -54,10 +55,9 @@ class MobilityState(State):
         return hash(tuple(self.mobility))
 
     @classmethod
-    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
-        mobility = base_id_to_tuple(serialized, configuration['mission_size'], configuration['num_agents'])
+    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
         state = MobilityState(configuration, environment)
-        state.mobility = list(mobility)
+        state.mobility = json.loads(serialized)
         return state
 
     @classmethod
@@ -80,9 +80,8 @@ class SignedMobilityState(State):
                          if agent.reversed
                          else self.configuration['mission_size'] + agent.position for agent in environment.agents]
 
-    def serialize(self) -> int:
-        serialized = tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'] * 2)
-        return serialized
+    def serialize(self) -> str:
+        return json.dumps(self.mobility)
 
     def __hash__(self):
         return hash(tuple(self.mobility))
@@ -91,8 +90,8 @@ class SignedMobilityState(State):
         return self.mobility == other.mobility
 
     @classmethod
-    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
-        mobility = base_id_to_tuple(serialized, configuration['mission_size'] * 2, configuration['num_agents'])
+    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
+        mobility = json.loads(serialized)
         state = SignedMobilityState(configuration, environment)
         state.mobility = list(mobility)
         return state
@@ -118,25 +117,14 @@ class CommunicationMobilityState(State):
     def __eq__(self, other):
         return self.mobility == other.mobility and self.communication == other.communication
 
-    def serialize(self) -> int:
-        mobility_serialized = tuple_to_base_id(tuple(self.mobility), self.configuration['mission_size'])
-        communication_serialized = tuple_to_base_id(tuple(self.communication), 2)
-
-        communication_count: int = 2 ** (self.configuration['mission_size'] - 1)
-
-        mixed_num = communication_serialized
-        mixed_num += mobility_serialized << communication_count.bit_length()
-        return mixed_num
+    def serialize(self) -> str:
+        return json.dumps([self.mobility, self.communication])
 
     @classmethod
-    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, environment: Environment):
-        communication_count: int = 2 ** (configuration['mission_size'] - 1)
-
-        mobility_serialized = serialized >> communication_count.bit_length()
-        communication_serialized = serialized - (mobility_serialized << communication_count.bit_length())
-
-        mobility = base_id_to_tuple(mobility_serialized, configuration['mission_size'], configuration['num_agents'])
-        communication = base_id_to_tuple(communication_serialized, 2, configuration['mission_size'] - 1)
+    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
+        deserialized = json.loads(serialized)
+        mobility = deserialized[0]
+        communication = deserialized[1]
 
         state = CommunicationMobilityState(configuration, environment)
         state.mobility = mobility

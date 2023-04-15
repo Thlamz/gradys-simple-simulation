@@ -62,7 +62,7 @@ class SparseQTable(QTable):
 
     def load_q_table(self):
         with self.configuration['qtable_file'].open("r") as file:
-            self.q_table: dict = json.load(file, object_hook=lambda d: {int(k): v for k, v in d.items()})
+            self.q_table: dict = json.load(file)
             state_class = self.configuration['state']
             self.q_table = {
                 state_class.deserialize(state, self.configuration, self.environment): {
@@ -115,47 +115,6 @@ class SparseQTable(QTable):
                 json.dump(serialized_qtable, file)
 
 
-class DenseQTable(QTable):
-    """
-    Dense Q Table implementation that used numpy arrays
-    """
-    q_table: numpy.ndarray
-
-    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        super().__init__(configuration, environment)
-        self.initialize_q_table()
-
-    def load_q_table(self):
-        self.q_table = np.load(str(self.configuration['qtable_file']))
-
-    def initialize_q_table(self):
-        if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
-            self.load_q_table()
-        else:
-            possible_states = self.configuration['state'].possible_states(self.configuration, self.environment)
-            possible_actions = len(MobilityCommand) ** self.configuration['num_agents']
-            self.q_table = np.full((possible_states, possible_actions),
-                                   self.configuration['qtable_initialization_value'],
-                                   dtype=float)
-
-    def get_q_value(self, state: State, control: Control) -> float:
-        return self.q_table[state.serialize(), control.serialize()]
-
-    def get_optimal_control(self, state: State) -> Control:
-        hash_id = np.argmax(self.q_table[state.serialize(), :])
-        return Control.deserialize(hash_id, self.configuration, self.environment)
-
-    def set_q_value(self, state: State, control: Control, q_value: float):
-        state_id = state.serialize()
-        control_id = control.serialize()
-        self.q_table[state_id, control_id] = q_value
-
-    def export_qtable(self):
-        if self.configuration['qtable_file'] is not None:
-            with self.configuration['qtable_file'].open("wb") as file:
-                np.save(file, self.q_table)
-
-
 class QLearning(Controller):
     """
     Controller that implements a Centralized Q Learning algorithm
@@ -204,9 +163,7 @@ class QLearning(Controller):
 
         self.qtable_file = self.configuration['qtable_file']
         self.qtable_format = self.configuration['qtable_format']
-        self.q_table = SparseQTable(configuration, environment) \
-            if self.qtable_format == 'sparse' \
-            else DenseQTable(configuration, environment)
+        self.q_table = SparseQTable(configuration, environment)
 
         if configuration['verbose']:
             state_size = configuration['state'].possible_states(configuration, environment)

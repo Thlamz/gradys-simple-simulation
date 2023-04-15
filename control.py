@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from typing import NamedTuple, List
 
@@ -24,8 +25,8 @@ class Control(IntSerializable):
     def __init__(self, mobility: tuple, configuration: SimulationConfiguration):
         self.mobility = list(mobility)
 
-    def serialize(self) -> int:
-        return tuple_to_base_id(tuple(cmd.value for cmd in self.mobility), len(MobilityCommand))
+    def serialize(self) -> str:
+        return json.dumps([command.value for command in self.mobility])
 
     def __eq__(self, other):
         return self.mobility == other.mobility
@@ -34,8 +35,8 @@ class Control(IntSerializable):
         return hash(tuple(self.mobility))
 
     @classmethod
-    def deserialize(cls, serialized: int, configuration: SimulationConfiguration, _environment):
-        deserialized_value = base_id_to_tuple(serialized, len(MobilityCommand), configuration['num_agents'])
+    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, _environment):
+        deserialized_value = json.loads(serialized)
         return Control(tuple(MobilityCommand(value) for value in deserialized_value),
                        configuration)
 
