@@ -3,12 +3,14 @@ import json
 import math
 import multiprocessing
 import os
+import random
 from functools import reduce
 from pathlib import Path
 from typing import List, Tuple
 
 import numpy as np
 from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
 
 from Dadca import Dadca
 from QLearning import QLearning
@@ -136,7 +138,6 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     both training and testing are recorded for QLearning
     """
     index, permutation = argument
-    print(f"Running permutation {index} - {permutation}")
 
     q_table_path = Path(f"./{index}.json")
     config = {
@@ -147,16 +148,16 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
 
     results = [run_simulation(config)]
     if config['controller'] == QLearning:
-        print(f"Running testing for permutation {index} - {permutation}")
         test_config = config.copy()
         test_config['training'] = False
         test_config['maximum_simulation_steps'] = 10_000
         test_results = run_simulation(test_config)
-        test_results['config'] = config
+
+        # Making sure the steps reported are related to the training not testing
+        test_results['config']['maximum_simulation_steps'] = str(config['maximum_simulation_steps'])
         results.append(test_results)
         os.unlink(q_table_path)
 
-    print(f"Finished running permutation {index}\n\n")
     return results
 
 
@@ -170,7 +171,8 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
     :param multi_processing: Enable multiprocessing
     :param max_processes: Maximum number of processes to use
     """
-    value_ranges = [(key, inputs[key]) for key in variable_keys]
+    # List of mutable campaign variables, making sure to shuffle values so the product is randomly ordered
+    value_ranges = [(key, random.sample(inputs[key], len(inputs[key]))) for key in variable_keys]
     permutations = itertools.product(*[value_range[1] for value_range in value_ranges])
 
     fixed_values = {
@@ -180,14 +182,17 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
     if multi_processing:
         fixed_values['verbose'] = False
 
-    print(f"Running {reduce(lambda a, b: a * b, (len(value) for _key, value in value_ranges))} total permutations \n\n")
+    num_permutations = reduce(lambda a, b: a * b, (len(value) for _key, value in value_ranges))
+    print(f"Running {num_permutations} total permutations \n\n")
 
     mapped_permutations = \
         map(lambda p: {**fixed_values, **{value_ranges[index][0]: value for index, value in enumerate(p)}}, permutations)
 
     if multi_processing:
-        with multiprocessing.Pool(processes=max_processes) as pool:
-            results = list(pool.map(_run_permutation, enumerate(mapped_permutations), chunksize=1))
+        results = list(process_map(_run_permutation,
+                                   enumerate(mapped_permutations),
+                                   max_workers=max_processes,
+                                   total=num_permutations))
     else:
         results = list(map(_run_permutation, enumerate(mapped_permutations)))
 
@@ -203,12 +208,12 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': 1,
-        'mission_size': 10,
+        'mission_size': [10, 40, 80, 120, 200],
         'sensor_generation_probability': 0.6,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
-        'reward_function': movement_reward,
-        'state': SignedMobilityState,
-        'maximum_simulation_steps': [int(n) for n in np.linspace(1, 10_000_000, 100)],
+        'reward_function': throughput_reward,
+        'state': [MobilityState, SignedMobilityState, CommunicationMobilityState],
+        'maximum_simulation_steps': [int(n) for n in np.linspace(1, 1_000_000, 100)],
         'repetitions': [0, 1, 2, 3, 4],
-    }, ['maximum_simulation_steps', 'repetitions'])
+    }, ['maximum_simulation_steps', 'state', 'mission_size', 'repetitions'], multi_processing=True)
