@@ -6,7 +6,6 @@ import numpy
 
 from base_serializer import base_id_to_tuple, tuple_to_base_id
 from environment import Environment
-from serializable import IntSerializable
 from simulation_configuration import SimulationConfiguration
 
 
@@ -15,14 +14,14 @@ class MobilityCommand(Enum):
     REVERSE = 0
 
 
-class Control(IntSerializable):
+class Control():
     """
     The control in this scenario has only one key, mobility. The enum value mobility[i] represents the direction
     agent i will move
     """
     mobility: List[MobilityCommand]
 
-    def __init__(self, mobility: tuple, configuration: SimulationConfiguration):
+    def __init__(self, mobility: tuple):
         self.mobility = list(mobility)
 
     def serialize(self) -> str:
@@ -35,10 +34,9 @@ class Control(IntSerializable):
         return hash(tuple(self.mobility))
 
     @classmethod
-    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, _environment):
+    def deserialize(cls, serialized: str):
         deserialized_value = json.loads(serialized)
-        return Control(tuple(MobilityCommand(value) for value in deserialized_value),
-                       configuration)
+        return Control(tuple(MobilityCommand(value) for value in deserialized_value))
 
 
 def validate_control(control: Control, configuration: SimulationConfiguration, environment: Environment) -> bool:
@@ -82,7 +80,7 @@ def generate_random_control(configuration: SimulationConfiguration, environment:
         elif environment.agents[index].position == configuration['mission_size'] - 1:
             mobility_control[index] = MobilityCommand.REVERSE
 
-    control = Control(tuple(mobility_control), configuration)
+    control = Control(tuple(mobility_control))
     assert validate_control(control, configuration, environment)
     return control
 

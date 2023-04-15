@@ -65,8 +65,8 @@ class SparseQTable(QTable):
             self.q_table: dict = json.load(file)
             state_class = self.configuration['state']
             self.q_table = {
-                state_class.deserialize(state, self.configuration, self.environment): {
-                    Control.deserialize(control, self.configuration, self.environment): q for control, q in value.items()
+                state_class.deserialize(state): {
+                    Control.deserialize(control): q for control, q in value.items()
                 } for state, value in self.q_table.items()
             }
 

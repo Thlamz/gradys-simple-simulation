@@ -4,11 +4,15 @@ from typing import List
 
 from base_serializer import tuple_to_base_id, base_id_to_tuple
 from environment import Environment
-from serializable import IntSerializable
 from simulation_configuration import SimulationConfiguration
 
 
-class State(IntSerializable):
+class State():
+
+    @classmethod
+    @abstractmethod
+    def build(cls, configuration: SimulationConfiguration, environment: Environment):
+        pass
 
     @abstractmethod
     def __eq__(self, other):
@@ -24,7 +28,7 @@ class State(IntSerializable):
 
     @classmethod
     @abstractmethod
-    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
+    def deserialize(cls, serialized: str):
         pass
 
     @classmethod
@@ -41,9 +45,13 @@ class MobilityState(State):
 
     mobility: List[int]
 
-    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        self.configuration = configuration
-        self.mobility = [agent.position for agent in environment.agents]
+    def __init__(self, mobility: List[int]):
+        self.mobility = mobility
+
+    @classmethod
+    def build(cls, configuration: SimulationConfiguration, environment: Environment):
+        mobility = [agent.position for agent in environment.agents]
+        return cls(mobility)
 
     def serialize(self) -> str:
         return json.dumps(self.mobility)
@@ -55,10 +63,9 @@ class MobilityState(State):
         return hash(tuple(self.mobility))
 
     @classmethod
-    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
-        state = MobilityState(configuration, environment)
-        state.mobility = json.loads(serialized)
-        return state
+    def deserialize(cls, serialized: str):
+        mobility = json.loads(serialized)
+        return cls(mobility)
 
     @classmethod
     def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
@@ -73,12 +80,15 @@ class SignedMobilityState(State):
 
     mobility: List[int]
 
-    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        self.configuration = configuration
+    def __init__(self, mobility: List[int]):
+        self.mobility = mobility
 
-        self.mobility = [agent.position
-                         if agent.reversed
-                         else self.configuration['mission_size'] + agent.position for agent in environment.agents]
+    @classmethod
+    def build(cls, configuration: SimulationConfiguration, environment: Environment):
+        mobility = [agent.position
+                    if agent.reversed
+                    else configuration['mission_size'] + agent.position for agent in environment.agents]
+        return cls(mobility)
 
     def serialize(self) -> str:
         return json.dumps(self.mobility)
@@ -90,10 +100,9 @@ class SignedMobilityState(State):
         return self.mobility == other.mobility
 
     @classmethod
-    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
+    def deserialize(cls, serialized: str):
         mobility = json.loads(serialized)
-        state = SignedMobilityState(configuration, environment)
-        state.mobility = list(mobility)
+        state = cls(mobility)
         return state
 
     @classmethod
@@ -105,11 +114,15 @@ class CommunicationMobilityState(State):
     mobility: List[int]
     communication: List[int]
 
-    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
-        self.configuration = configuration
+    def __init__(self, mobility: List[int], communication: List[int]):
+        self.mobility = mobility
+        self.communication = communication
 
-        self.mobility = [agent.position for agent in environment.agents]
-        self.communication = [1 if sensor.count_packets() > 0 else 0 for sensor in environment.sensors]
+    @classmethod
+    def build(cls, configuration: SimulationConfiguration, environment: Environment):
+        mobility = [agent.position for agent in environment.agents]
+        communication = [1 if sensor.count_packets() > 0 else 0 for sensor in environment.sensors]
+        return cls(mobility, communication)
 
     def __hash__(self):
         return hash(tuple(self.mobility)) + hash(tuple(self.communication))
@@ -121,14 +134,12 @@ class CommunicationMobilityState(State):
         return json.dumps([self.mobility, self.communication])
 
     @classmethod
-    def deserialize(cls, serialized: str, configuration: SimulationConfiguration, environment: Environment):
+    def deserialize(cls, serialized: str):
         deserialized = json.loads(serialized)
         mobility = deserialized[0]
         communication = deserialized[1]
 
-        state = CommunicationMobilityState(configuration, environment)
-        state.mobility = mobility
-        state.communication = communication
+        state = cls(mobility, communication)
         return state
 
     @classmethod

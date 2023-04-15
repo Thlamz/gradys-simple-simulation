@@ -36,7 +36,7 @@ class Simulation:
 
         self.rng = numpy.random.default_rng()
 
-        self.X = self.configuration['state'](self.configuration, self.environment)
+        self.X = self.configuration['state'].build(self.configuration, self.environment)
         self.U = None
 
     def simulate(self):
@@ -78,5 +78,5 @@ class Simulation:
                 agent.packets += self.environment.sensors[agent_mobility - 1].count_update_packets(self.simulation_step)
                 self.environment.sensors[agent_mobility - 1].clear_packets()
 
-        self.X = self.configuration['state'](self.configuration, self.environment)
+        self.X = self.configuration['state'].build(self.configuration, self.environment)
         self.simulation_step += 1
