@@ -131,6 +131,7 @@ class QLearning(Controller):
 
     # Variables updated during execution
     last_state: Optional[State]
+    last_control: Optional[Control]
     last_q_value: float
     epsilon: float
     q_table: QTable
@@ -171,6 +172,7 @@ class QLearning(Controller):
             print(f"QTable size: {state_size * control_size}")
 
         self.last_state = None
+        self.last_control = None
         self.last_q_value = self.configuration['qtable_initialization_value']
         self.total_reward = 0
         self.cum_avg_rewards = []
@@ -204,13 +206,10 @@ class QLearning(Controller):
 
         if self.training and self.last_state is not None:
             next_state_optimal_control = self.q_table.get_optimal_control(current_state)
-            next_state_qvalue = self.q_table.get_q_value(current_state, next_state_optimal_control)
-
-            q_value = ((1 - self.learning_rate) * self.last_q_value
-                       + self.learning_rate * (reward + self.gamma * next_state_qvalue))
-            self.last_q_value = q_value
-
-            self.q_table.set_q_value(self.last_state, current_control, q_value)
+            next_state_optimal_control_q_value = self.q_table.get_q_value(current_state, next_state_optimal_control)
+            q_value = ((1 - self.learning_rate) * self.q_table.get_q_value(self.last_state, self.last_control) +
+                       self.learning_rate * (reward + self.gamma * next_state_optimal_control_q_value))
+            self.q_table.set_q_value(self.last_state, self.last_control, q_value)
 
             self.decay_epsilon()
 
@@ -224,6 +223,7 @@ class QLearning(Controller):
                 control = self.q_table.get_optimal_control(current_state)
 
         self.last_state = current_state
+        self.last_control = control
 
         return control
 
