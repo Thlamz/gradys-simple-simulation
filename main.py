@@ -213,8 +213,8 @@ if __name__ == '__main__':
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
         'reward_function': throughput_reward,
-        'state': [MobilityState, SignedMobilityState, CommunicationMobilityState],
-        'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 50)],
+        'state': [SignedMobilityState],
+        'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 30)],
         'learning_rate': [0.1, 0.6],
         'repetitions': [0, 1, 2],
     }, ['maximum_simulation_steps', 'state', 'mission_size', 'repetitions', 'learning_rate'], multi_processing=True)
