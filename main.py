@@ -83,7 +83,8 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         if configuration['step_by_step']:
             print("---------------------")
             print(f"Ground Station: {simulation.environment.ground_station.packets}")
-            print(f"Sensors: [{', '.join(str(sensor.count_update_packets(simulation.simulation_step, configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
+            print(
+                f"Sensors: [{', '.join(str(sensor.count_update_packets(simulation.simulation_step, configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
             agent_string = ""
             for i in range(configuration['mission_size']):
                 agent_string += "-("
@@ -161,7 +162,11 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     return results
 
 
-def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool = False, max_processes: int = None):
+def run_campaign(inputs: dict,
+                 variable_keys: List[str],
+                 multi_processing: bool = False,
+                 max_processes: int = None,
+                 results_file: Path = Path("./analysis/results.json")):
     """
     Runs a simulation campaign. A campaign is composed by the product of all value variations of the variable keys.
     Simulation results are recorded in a results.json file in the analysis folder.
@@ -170,6 +175,7 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
     :param variable_keys: Denotes that a key in the inputs dictionary is variable
     :param multi_processing: Enable multiprocessing
     :param max_processes: Maximum number of processes to use
+    :param results_file: File where the simulation results will be saved
     """
     # List of mutable campaign variables, making sure to shuffle values so the product is randomly ordered
     value_ranges = [(key, random.sample(inputs[key], len(inputs[key]))) for key in variable_keys]
@@ -186,7 +192,8 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
     print(f"Running {num_permutations} total permutations \n\n")
 
     mapped_permutations = \
-        map(lambda p: {**fixed_values, **{value_ranges[index][0]: value for index, value in enumerate(p)}}, permutations)
+        map(lambda p: {**fixed_values, **{value_ranges[index][0]: value for index, value in enumerate(p)}},
+            permutations)
 
     if multi_processing:
         results = list(process_map(_run_permutation,
@@ -201,21 +208,23 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
         'results': list(itertools.chain(*results))
     }
 
-    with open("analysis/result.json", "w") as file:
+    with open(results_file, "w") as file:
         file.write(json.dumps(campaign, indent=2, default=lambda x: None))
 
 
 if __name__ == '__main__':
-    run_campaign({
-        'num_agents': 1,
-        'mission_size': [int(n) for n in np.linspace(10, 100, 20)],
-        'sensor_generation_probability': 0.6,
-        'sensor_packet_lifecycle': math.inf,
-        'controller': QLearning,
-        'reward_function': throughput_reward,
-        'state': [CommunicationMobilityState],
-        'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 10)],
-        'learning_rate': [0.1, 0.5, 0.9],
-        'repetitions': [0, 1, 2, 4, 5],
-    }, ['maximum_simulation_steps', 'state', 'mission_size', 'repetitions', 'learning_rate'], multi_processing=True)
-
+    for reward in [throughput_reward, delivery_reward, delivery_packets_reward]:
+        run_campaign({
+            'num_agents': 1,
+            'mission_size': [int(n) for n in np.linspace(10, 50, 5)],
+            'sensor_generation_probability': 0.6,
+            'sensor_packet_lifecycle': math.inf,
+            'controller': QLearning,
+            'reward_function': reward,
+            'state': CommunicationMobilityState,
+            'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 10)],
+            'learning_rate': [0.1, 0.9],
+            'repetitions': [0, 1, 2, 4, 5],
+        }, ['maximum_simulation_steps', 'mission_size', 'repetitions', 'learning_rate'],
+            multi_processing=True,
+            results_file=Path(f"./analysis/{str(reward.__name__)}.json"))
