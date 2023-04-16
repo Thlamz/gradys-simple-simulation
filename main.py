@@ -21,7 +21,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from simulation_configuration import SimulationConfiguration, SimulationResults
-from state import MobilityState, SignedMobilityState, CommunicationMobilityState
+from state import MobilityState, SignedMobilityState, CommunicationMobilityState, AvgCommunicationMobilityState
 
 
 def get_default_configuration() -> SimulationConfiguration:
@@ -208,14 +208,14 @@ def run_campaign(inputs: dict, variable_keys: List[str], multi_processing: bool 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': 1,
-        'mission_size': [10, 80, 150],
+        'mission_size': [int(n) for n in np.linspace(10, 100, 20)],
         'sensor_generation_probability': 0.6,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
         'reward_function': throughput_reward,
-        'state': [SignedMobilityState],
-        'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 30)],
-        'learning_rate': [0.1, 0.6],
-        'repetitions': [0, 1, 2],
+        'state': [CommunicationMobilityState],
+        'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 10)],
+        'learning_rate': [0.1, 0.5, 0.9],
+        'repetitions': [0, 1, 2, 4, 5],
     }, ['maximum_simulation_steps', 'state', 'mission_size', 'repetitions', 'learning_rate'], multi_processing=True)
 

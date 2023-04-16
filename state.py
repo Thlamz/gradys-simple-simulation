@@ -147,3 +147,44 @@ class CommunicationMobilityState(State):
         mobility_count = configuration['mission_size'] ** configuration['num_agents']
         communication_count = 2 ** (configuration['mission_size'] - 1)
         return mobility_count * communication_count
+
+
+class AvgCommunicationMobilityState(State):
+    mobility: List[int]
+    communication: int
+
+    def __init__(self, mobility: List[int], communication: int):
+        self.mobility = mobility
+        self.communication = communication
+
+    @classmethod
+    def build(cls, configuration: SimulationConfiguration, environment: Environment):
+        mobility = [agent.position for agent in environment.agents]
+        communication = sum(index
+                            for index, sensor in enumerate(environment.sensors)
+                            if sensor.count_packets() > 0) / (configuration['mission_size'] - 1)
+        return cls(mobility, round(communication))
+
+    def __hash__(self):
+        return hash(tuple(self.mobility)) + hash(self.communication)
+
+    def __eq__(self, other):
+        return self.mobility == other.mobility and self.communication == other.communication
+
+    def serialize(self) -> str:
+        return json.dumps([self.mobility, self.communication])
+
+    @classmethod
+    def deserialize(cls, serialized: str):
+        deserialized = json.loads(serialized)
+        mobility = deserialized[0]
+        communication = deserialized[1]
+
+        state = cls(mobility, communication)
+        return state
+
+    @classmethod
+    def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        mobility_count = configuration['mission_size'] ** configuration['num_agents']
+        communication_count = (configuration['mission_size'] - 1)
+        return mobility_count * communication_count
