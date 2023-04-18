@@ -213,18 +213,15 @@ def run_campaign(inputs: dict,
 
 
 if __name__ == '__main__':
-    for reward in [throughput_reward, delivery_reward, delivery_packets_reward]:
-        run_campaign({
-            'num_agents': 1,
-            'mission_size': [int(n) for n in np.linspace(10, 50, 5)],
-            'sensor_generation_probability': 0.6,
-            'sensor_packet_lifecycle': math.inf,
-            'controller': QLearning,
-            'reward_function': reward,
-            'state': CommunicationMobilityState,
-            'maximum_simulation_steps': [int(n) for n in np.linspace(1000, 10_000_000, 10)],
-            'learning_rate': [0.1, 0.9],
-            'repetitions': [0, 1, 2, 4, 5],
-        }, ['maximum_simulation_steps', 'mission_size', 'repetitions', 'learning_rate'],
-            multi_processing=True,
-            results_file=Path(f"./analysis/{str(reward.__name__)}.json"))
+    run_campaign({
+        'num_agents': [1, 4, 8],
+        'mission_size': [10, 20, 30, 50],
+        'sensor_generation_probability': 0.6,
+        'sensor_packet_lifecycle': math.inf,
+        'controller': QLearning,
+        'reward_function': throughput_reward,
+        'state': CommunicationMobilityState,
+        'maximum_simulation_steps': [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000],
+        'learning_rate': [0.1, 0.9],
+        'repetitions': [i for i in range(5)],
+    }, ['maximum_simulation_steps', 'mission_size', 'repetitions', 'learning_rate', 'num_agents'], multi_processing=True)
