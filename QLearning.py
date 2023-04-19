@@ -1,5 +1,10 @@
 import json
 import math
+import os
+import random
+import shelve
+import sys
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Literal, Dict, List
@@ -149,7 +154,6 @@ class QLearning(Controller):
     learning_rate: float
     gamma: float
     qtable_initialization_value: float
-    qtable_format: Literal['sparse', 'dense']
 
     configuration: SimulationConfiguration
 
@@ -162,9 +166,7 @@ class QLearning(Controller):
         if not self.training:
             self.epsilon = 0
 
-        self.qtable_file = self.configuration['qtable_file']
-        self.qtable_format = self.configuration['qtable_format']
-        self.q_table = SparseQTable(configuration, environment)
+        self.q_table = self.configuration['qtable_format'](configuration, environment)
 
         if configuration['verbose']:
             state_size = configuration['state'].possible_states(configuration, environment)

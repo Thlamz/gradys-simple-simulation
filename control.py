@@ -56,14 +56,16 @@ def validate_control(control: Control, configuration: SimulationConfiguration, e
 rng = numpy.random.default_rng()
 
 rng_batch = []
+rng_batch_cursor = 0
 
 # Optimization: Batching RNG generation for better performance
 def _command_rng(count) -> List[int]:
-    global rng_batch
-    if len(rng_batch) < count:
+    global rng_batch, rng_batch_cursor
+    if len(rng_batch) - rng_batch_cursor < count:
         rng_batch = rng.integers(0, len(MobilityCommand), 1_000_000)
-    batch = rng_batch[-count:]
-    rng_batch = rng_batch[:-count]
+        rng_batch_cursor = 0
+    batch = rng_batch[rng_batch_cursor:rng_batch_cursor + count]
+    rng_batch_cursor += count
     return batch
 
 

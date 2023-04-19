@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 
 from base_serializer import tuple_to_base_id, base_id_to_tuple
 from environment import Environment
@@ -43,10 +43,10 @@ class MobilityState(State):
     mobility[i] represents the waypoint position o agent i
     """
 
-    mobility: List[int]
+    mobility: Tuple[int]
 
     def __init__(self, mobility: List[int]):
-        self.mobility = mobility
+        self.mobility = tuple(mobility)
 
     @classmethod
     def build(cls, configuration: SimulationConfiguration, environment: Environment):
@@ -78,10 +78,10 @@ class SignedMobilityState(State):
     mobility[i] represents the waypoint position o agent i
     """
 
-    mobility: List[int]
+    mobility: Tuple[int]
 
     def __init__(self, mobility: List[int]):
-        self.mobility = mobility
+        self.mobility = tuple(mobility)
 
     @classmethod
     def build(cls, configuration: SimulationConfiguration, environment: Environment):
@@ -111,12 +111,12 @@ class SignedMobilityState(State):
 
 
 class CommunicationMobilityState(State):
-    mobility: List[int]
-    communication: List[int]
+    mobility: Tuple[int]
+    communication: Tuple[int]
 
     def __init__(self, mobility: List[int], communication: List[int]):
-        self.mobility = mobility
-        self.communication = communication
+        self.mobility = tuple(mobility)
+        self.communication = tuple(communication)
 
     @classmethod
     def build(cls, configuration: SimulationConfiguration, environment: Environment):

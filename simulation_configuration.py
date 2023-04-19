@@ -25,7 +25,7 @@ class SimulationConfiguration(TypedDict):
     reward_function: Callable
     qtable_initialization_value: float
     qtable_file: Union[Path, None]
-    qtable_format: Literal['sparse', 'dense']
+    qtable_format: Callable
 
     # Simulation parameters
     training: bool

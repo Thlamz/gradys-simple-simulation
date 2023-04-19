@@ -13,7 +13,7 @@ from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 
 from Dadca import Dadca
-from QLearning import QLearning
+from QLearning import QLearning, SparseQTable
 from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward
 from simulation import Simulation
 
@@ -44,7 +44,7 @@ def get_default_configuration() -> SimulationConfiguration:
         'reward_function': throughput_reward,
         'qtable_initialization_value': 0,
         'qtable_file': None,
-        'qtable_format': 'sparse',
+        'qtable_format': SparseQTable,
         'training': True,
         'step_by_step': False,
         'plots': False,
@@ -151,7 +151,7 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     if config['controller'] == QLearning:
         test_config = config.copy()
         test_config['training'] = False
-        test_config['maximum_simulation_steps'] = 10_000
+        test_config['maximum_simulation_steps'] = 10000
         test_results = run_simulation(test_config)
 
         # Making sure the steps reported are related to the training not testing
@@ -221,7 +221,7 @@ if __name__ == '__main__':
         'controller': QLearning,
         'reward_function': throughput_reward,
         'state': CommunicationMobilityState,
-        'maximum_simulation_steps': [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000],
+        'maximum_simulation_steps': [10_000, 50_000, 100_000, 500_000, 1_000_000],
         'learning_rate': [0.1, 0.9],
         'repetitions': [i for i in range(5)],
     }, ['maximum_simulation_steps', 'mission_size', 'repetitions', 'learning_rate', 'num_agents'], multi_processing=True)
