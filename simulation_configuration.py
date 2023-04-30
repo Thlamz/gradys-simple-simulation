@@ -30,6 +30,7 @@ class SimulationConfiguration(TypedDict):
     # Simulation parameters
     training: bool
     step_by_step: bool
+    testing_repetitions: int
     plots: bool
     verbose: bool
 

@@ -47,6 +47,7 @@ def get_default_configuration() -> SimulationConfiguration:
         'qtable_file': None,
         'qtable_format': SparseQTable,
         'training': True,
+        'testing_repetitions': 1,
         'step_by_step': False,
         'plots': False,
         'verbose': True
@@ -130,7 +131,6 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         'controller': controller_results
     }
 
-
 def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     """
     Runs a permutation of configuration parameters. This auxiliary function is used
@@ -150,7 +150,7 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
 
     results = [run_simulation(config)]
     if config['controller'] == QLearning:
-        for _ in range(25):
+        for _ in range(config['testing_repetitions']):
             test_config = config.copy()
             test_config['training'] = False
             test_config['maximum_simulation_steps'] = 10000
@@ -224,4 +224,4 @@ if __name__ == '__main__':
         'reward_function': unique_packets,
         'state': CommunicationMobilityState,
         'maximum_simulation_steps': [10_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000],
-    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])
+    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True, max_processes=4)

@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import pickle
 import random
 import shelve
 import sys
@@ -66,14 +67,8 @@ class SparseQTable(QTable):
         self.initialize_q_table()
 
     def load_q_table(self):
-        with self.configuration['qtable_file'].open("r") as file:
-            self.q_table: dict = json.load(file)
-            state_class = self.configuration['state']
-            self.q_table = {
-                state_class.deserialize(state): {
-                    Control.deserialize(control): q for control, q in value.items()
-                } for state, value in self.q_table.items()
-            }
+        with self.configuration['qtable_file'].open("rb") as file:
+            self.q_table = pickle.load(file)
 
     def initialize_q_table(self):
         if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
@@ -111,13 +106,8 @@ class SparseQTable(QTable):
 
     def export_qtable(self):
         if self.configuration['qtable_file'] is not None:
-            with self.configuration['qtable_file'].open("w") as file:
-                serialized_qtable = {
-                    state.serialize(): {
-                        control.serialize(): q for control, q in value.items()
-                    } for state, value in self.q_table.items()
-                }
-                json.dump(serialized_qtable, file)
+            with self.configuration['qtable_file'].open("wb") as file:
+                pickle.dump(self.q_table, file)
 
 
 class QLearning(Controller):
