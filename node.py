@@ -57,9 +57,11 @@ class Sensor:
 class Agent:
     position: int
     packets: int
+    sources: set
     reversed: bool
 
     def __init__(self):
         self.packets = 0
         self.position = 0
         self.reversed = False
+        self.sources = set()

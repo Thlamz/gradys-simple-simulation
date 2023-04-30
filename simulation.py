@@ -66,7 +66,9 @@ class Simulation:
 
                 if agent2.position <= (agent1.position + 2):
                     agent1.packets += agent2.packets
+                    agent1.sources = agent1.sources.union(agent2.sources)
                     agent2.packets = 0
+                    agent2.sources.clear()
 
         # Simulating sensor packet pickup
         for index, agent in enumerate(self.environment.agents):
@@ -74,8 +76,10 @@ class Simulation:
             if agent_mobility == 0:
                 self.environment.ground_station.packets += agent.packets
                 agent.packets = 0
+                agent.sources.clear()
             else:
                 agent.packets += self.environment.sensors[agent_mobility - 1].count_update_packets(self.simulation_step)
+                agent.sources.add(agent.position)
                 self.environment.sensors[agent_mobility - 1].clear_packets()
 
         self.X = self.configuration['state'].build(self.configuration, self.environment)

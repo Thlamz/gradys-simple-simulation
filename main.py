@@ -14,7 +14,8 @@ from tqdm.contrib.concurrent import process_map
 
 from Dadca import Dadca
 from QLearning import QLearning, SparseQTable
-from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward
+from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward, delivery_and_pickup, \
+    unique_packets
 from simulation import Simulation
 
 import seaborn as sns
@@ -149,14 +150,15 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
 
     results = [run_simulation(config)]
     if config['controller'] == QLearning:
-        test_config = config.copy()
-        test_config['training'] = False
-        test_config['maximum_simulation_steps'] = 10000
-        test_results = run_simulation(test_config)
+        for _ in range(25):
+            test_config = config.copy()
+            test_config['training'] = False
+            test_config['maximum_simulation_steps'] = 10000
+            test_results = run_simulation(test_config)
 
-        # Making sure the steps reported are related to the training not testing
-        test_results['config']['maximum_simulation_steps'] = str(config['maximum_simulation_steps'])
-        results.append(test_results)
+            # Making sure the steps reported are related to the training not testing
+            test_results['config']['maximum_simulation_steps'] = str(config['maximum_simulation_steps'])
+            results.append(test_results)
         os.unlink(q_table_path)
 
     return results
@@ -214,14 +216,12 @@ def run_campaign(inputs: dict,
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [1, 4, 8],
-        'mission_size': [10, 20, 30, 50],
-        'sensor_generation_probability': 0.6,
+        'num_agents': [1, 2, 3, 4],
+        'mission_size': [10, 20, 50, 100],
+        'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
-        'reward_function': throughput_reward,
+        'reward_function': unique_packets,
         'state': CommunicationMobilityState,
-        'maximum_simulation_steps': [10_000, 50_000, 100_000, 500_000, 1_000_000],
-        'learning_rate': [0.1, 0.9],
-        'repetitions': [i for i in range(5)],
-    }, ['maximum_simulation_steps', 'mission_size', 'repetitions', 'learning_rate', 'num_agents'], multi_processing=True)
+        'maximum_simulation_steps': [10_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000],
+    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True, max_processes=4)
