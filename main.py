@@ -223,5 +223,6 @@ if __name__ == '__main__':
         'controller': QLearning,
         'reward_function': unique_packets,
         'state': CommunicationMobilityState,
+        'testing_repetitions': 25,
         'maximum_simulation_steps': [10_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000],
     }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])
