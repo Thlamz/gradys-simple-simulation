@@ -211,17 +211,17 @@ def run_campaign(inputs: dict,
     }
 
     with open(results_file, "w") as file:
-        file.write(json.dumps(campaign, indent=2, default=lambda x: None))
+        file.write(json.dumps(campaign, default=lambda x: None))
 
 
 if __name__ == '__main__':
     run_campaign({
         'num_agents': [1, 2, 3, 4],
-        'mission_size': [10, 20, 50, 100],
+        'mission_size': [10, 15, 20, 30, 40, 50],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
         'reward_function': unique_packets,
         'state': CommunicationMobilityState,
         'maximum_simulation_steps': [10_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000],
-    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True, max_processes=4)
+    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])

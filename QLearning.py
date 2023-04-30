@@ -236,7 +236,8 @@ class QLearning(Controller):
 
             sns.lineplot(data=self.epsilons).set(title="Epsilons")
             plt.show()
-        self.q_table.export_qtable()
+        if self.training:
+            self.q_table.export_qtable()
         return {
             'avg_reward': self.total_reward / self.configuration['maximum_simulation_steps']
         }
