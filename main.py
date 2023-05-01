@@ -22,7 +22,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from simulation_configuration import SimulationConfiguration, SimulationResults
-from state import MobilityState, SignedMobilityState, CommunicationMobilityState, AvgCommunicationMobilityState
+from state import MobilityState, SignedMobilityState, CommunicationMobilityState, \
+    CommunicationMobilityPacketsState
 
 
 def get_default_configuration() -> SimulationConfiguration:
@@ -131,6 +132,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         'controller': controller_results
     }
 
+
 def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     """
     Runs a permutation of configuration parameters. This auxiliary function is used
@@ -193,15 +195,36 @@ def run_campaign(inputs: dict,
     num_permutations = reduce(lambda a, b: a * b, (len(value) for _key, value in value_ranges))
     print(f"Running {num_permutations} total permutations \n\n")
 
-    mapped_permutations = \
+    mapped_permutations = list(
         map(lambda p: {**fixed_values, **{value_ranges[index][0]: value for index, value in enumerate(p)}},
-            permutations)
+            permutations))
 
     if multi_processing:
-        results = list(process_map(_run_permutation,
-                                   enumerate(mapped_permutations),
-                                   max_workers=max_processes,
-                                   total=num_permutations))
+        small_permutations = [permutation
+                              for permutation in mapped_permutations
+                              if permutation['maximum_simulation_steps'] <= 1_000_000]
+        print(f"Running {len(small_permutations)} smaller simulations in parallel\n")
+        small_results = list(process_map(_run_permutation,
+                                         enumerate(small_permutations),
+                                         max_workers=min(max_processes or 8, 8),
+                                         total=len(small_permutations)))
+
+        medium_permutations = [permutation
+                               for permutation in mapped_permutations
+                               if 1_000_000 < permutation['maximum_simulation_steps'] <= 5_000_000]
+        print(f"\nRunning {len(medium_permutations)} medium simulations in 3 worker parallel\n")
+        medium_results = list(process_map(_run_permutation,
+                                          enumerate(medium_permutations),
+                                          max_workers=min(max_processes or 3, 3),
+                                          total=len(medium_permutations)))
+
+        large_permutations = [permutation
+                              for permutation in mapped_permutations
+                              if permutation['maximum_simulation_steps'] > 5_000_000]
+        print(f"\nRunning {len(large_permutations)} larger simulations synchronously\n")
+        big_results = list(tqdm(map(_run_permutation, enumerate(large_permutations)), total=len(large_permutations)))
+
+        results = small_results + medium_results + big_results
     else:
         results = list(map(_run_permutation, enumerate(mapped_permutations)))
 
@@ -217,12 +240,12 @@ def run_campaign(inputs: dict,
 if __name__ == '__main__':
     run_campaign({
         'num_agents': [1, 2, 3],
-        'mission_size': [10, 15, 30, 50],
+        'mission_size': [10, 15, 30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
         'reward_function': unique_packets,
-        'state': CommunicationMobilityState,
+        'state': CommunicationMobilityPacketsState,
         'testing_repetitions': 25,
-        'maximum_simulation_steps': [10_000, 100_000, 1_000_000, 5_000_000, 10_000_000],
-    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])
+        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 10_000_000, 20)],
+    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True)

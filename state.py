@@ -125,7 +125,7 @@ class CommunicationMobilityState(State):
         return cls(mobility, communication)
 
     def __hash__(self):
-        return hash(tuple(self.mobility)) + hash(tuple(self.communication))
+        return hash(self.mobility) + hash(self.communication)
 
     def __eq__(self, other):
         return self.mobility == other.mobility and self.communication == other.communication
@@ -149,42 +149,45 @@ class CommunicationMobilityState(State):
         return mobility_count * communication_count
 
 
-class AvgCommunicationMobilityState(State):
-    mobility: List[int]
-    communication: int
+class CommunicationMobilityPacketsState(State):
+    mobility: Tuple[int]
+    packets: Tuple[int]
+    communication: Tuple[int]
 
-    def __init__(self, mobility: List[int], communication: int):
-        self.mobility = mobility
-        self.communication = communication
+    def __init__(self, mobility: List[int], packets: List[int], communication: List[int]):
+        self.mobility = tuple(mobility)
+        self.packets = tuple(packets)
+        self.communication = tuple(communication)
 
     @classmethod
     def build(cls, configuration: SimulationConfiguration, environment: Environment):
         mobility = [agent.position for agent in environment.agents]
-        communication = sum(index
-                            for index, sensor in enumerate(environment.sensors)
-                            if sensor.count_packets() > 0) / (configuration['mission_size'] - 1)
-        return cls(mobility, round(communication))
+        packets = [len(agent.sources) for agent in environment.agents]
+        communication = [1 if sensor.count_packets() > 0 else 0 for sensor in environment.sensors]
+        return cls(mobility, packets, communication)
 
     def __hash__(self):
-        return hash(tuple(self.mobility)) + hash(self.communication)
+        return hash(self.mobility) + hash(self.packets) + hash(self.communication)
 
     def __eq__(self, other):
-        return self.mobility == other.mobility and self.communication == other.communication
+        return self.mobility == other.mobility and self.packets == other.packets and self.communication == other.communication
 
     def serialize(self) -> str:
-        return json.dumps([self.mobility, self.communication])
+        return json.dumps([self.mobility, self.packets, self.communication])
 
     @classmethod
     def deserialize(cls, serialized: str):
         deserialized = json.loads(serialized)
         mobility = deserialized[0]
-        communication = deserialized[1]
+        packets = deserialized[1]
+        communication = deserialized[2]
 
-        state = cls(mobility, communication)
+        state = cls(mobility, packets, communication)
         return state
 
     @classmethod
     def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
         mobility_count = configuration['mission_size'] ** configuration['num_agents']
-        communication_count = (configuration['mission_size'] - 1)
-        return mobility_count * communication_count
+        packets_count = (configuration['mission_size'] - 1) ** configuration['num_agents']
+        communication_count = 2 ** (configuration['mission_size'] - 1)
+        return mobility_count * packets_count * communication_count
