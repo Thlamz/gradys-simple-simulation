@@ -19,6 +19,7 @@ from environment import Environment
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from rng import rng
 from simulation_configuration import SimulationConfiguration
 from state import State
 
@@ -176,7 +177,6 @@ class QLearning(Controller):
         self.learning_rate = self.configuration['learning_rate']
         self.gamma = self.configuration['gamma']
         self.qtable_initialization_value = self.configuration['qtable_initialization_value']
-        self.rng = numpy.random.default_rng()
 
     def decay_epsilon(self) -> None:
         if self.epsilon <= self.epsilon_end:
@@ -205,7 +205,7 @@ class QLearning(Controller):
 
             self.decay_epsilon()
 
-        if self.training and self.rng.random() < self.epsilon:
+        if self.training and rng.random() < self.epsilon:
             control = generate_random_control(self.configuration, self.environment)
         else:
             # Optimization: Tries to use previously calculated optimal control before picking new one

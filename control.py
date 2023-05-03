@@ -6,6 +6,7 @@ import numpy
 
 from base_serializer import base_id_to_tuple, tuple_to_base_id
 from environment import Environment
+from rng import rng
 from simulation_configuration import SimulationConfiguration
 
 
@@ -51,9 +52,6 @@ def validate_control(control: Control, configuration: SimulationConfiguration, e
         if position == configuration['mission_size'] - 1 and command == MobilityCommand.FORWARDS:
             return False
     return True
-
-
-rng = numpy.random.default_rng()
 
 rng_batch = []
 rng_batch_cursor = 0

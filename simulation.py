@@ -5,6 +5,7 @@ import numpy
 from control import Control, MobilityCommand, validate_control, execute_control
 from controller import Controller
 from environment import Environment
+from rng import rng
 from simulation_configuration import SimulationConfiguration
 from state import State
 
@@ -34,8 +35,6 @@ class Simulation:
         self.environment = Environment(configuration)
         self.controller = configuration['controller'](configuration, self.environment)
 
-        self.rng = numpy.random.default_rng()
-
         self.X = self.configuration['state'].build(self.configuration, self.environment)
         self.U = None
 
@@ -49,7 +48,7 @@ class Simulation:
 
         # Simulating sensor packet generation
         if self.simulation_step % self.configuration['sensor_generation_frequency'] == 0:
-            probabilities = self.rng.random(size=self.configuration['mission_size'] - 1)
+            probabilities = rng.random(size=self.configuration['mission_size'] - 1)
             for sensor, probability in zip(self.environment.sensors, probabilities):
                 if probability < self.configuration['sensor_generation_probability']:
                     sensor.add_packet(self.simulation_step)
