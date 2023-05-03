@@ -207,7 +207,7 @@ def run_campaign(inputs: dict,
         small_results = list(process_map(_run_permutation,
                                          enumerate(small_permutations),
                                          max_workers=min(max_processes or 8, 8),
-                                         total=len(small_permutations)))
+                                         total=len(small_permutations),))
 
         medium_permutations = [permutation
                                for permutation in mapped_permutations
@@ -239,7 +239,7 @@ def run_campaign(inputs: dict,
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [1, 2, 3],
+        'num_agents': [1, 2, 3, 4],
         'mission_size': [10, 15, 30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
@@ -247,5 +247,5 @@ if __name__ == '__main__':
         'reward_function': unique_packets,
         'state': CommunicationMobilityPacketsState,
         'testing_repetitions': 25,
-        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 10_000_000, 20)],
-    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True)
+        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 1_000_000, 20)],
+    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True, max_processes=8)
