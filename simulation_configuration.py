@@ -15,7 +15,6 @@ class SimulationConfiguration(TypedDict):
     sensor_generation_frequency: int
     sensor_generation_probability: float
     sensor_packet_lifecycle: Optional[int]
-    maximum_simulation_steps: int
 
     # Q Learning parameters
     epsilon_start: float
@@ -28,6 +27,8 @@ class SimulationConfiguration(TypedDict):
     qtable_format: Callable
 
     # Simulation parameters
+    maximum_simulation_steps: int
+    target_total_training_time: Optional[int]
     training: bool
     step_by_step: bool
     testing_repetitions: int

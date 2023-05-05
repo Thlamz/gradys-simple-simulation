@@ -113,7 +113,7 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
         sns.lineplot(data=throughputs).set(title='Throughput')
         plt.show()
 
-        plt.figure(figsize=(50, 8))
+        plt.figure(figsize=(80, 8))
         sns.lineplot(data=agent_positions)
         sns.lineplot().set(title='Agent Positions', ylim=(0, configuration['mission_size'] - 1))
         plt.show()
@@ -149,8 +149,12 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
         **permutation,
         'qtable_file': q_table_path
     }
+    training_time = 0
+    results = []
+    while training_time < config.get('target_total_training_time', 1):
+        results.append(run_simulation(config))
+        training_time += config['maximum_simulation_steps']
 
-    results = [run_simulation(config)]
     if config['controller'] == QLearning:
         for _ in range(config['testing_repetitions']):
             test_config = config.copy()
@@ -239,13 +243,13 @@ def run_campaign(inputs: dict,
 
 if __name__ == '__main__':
     run_campaign({
-        'num_agents': [1, 2, 3, 4],
-        'mission_size': [10, 15, 30],
+        'num_agents': [2],
+        'mission_size': [5],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': QLearning,
         'reward_function': unique_packets,
         'state': CommunicationMobilityPacketsState,
         'testing_repetitions': 25,
-        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 1_000_000, 20)],
+        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 1_000_000, 100)],
     }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True, max_processes=8)
