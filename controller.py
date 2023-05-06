@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from pathlib import Path
+from typing import Optional, TypedDict, Callable, Union
 
 from control import Control
 from environment import Environment
@@ -25,3 +26,15 @@ class Controller(ABC):
 
     def finalize(self) -> dict:
         return {}
+
+
+class QLearningParameters(TypedDict):
+    # Q Learning parameters
+    epsilon_start: float
+    epsilon_end: float
+    learning_rate: float
+    gamma: float
+    reward_function: Callable
+    qtable_initialization_value: float
+    qtable_file: Union[Path, None]
+    qtable_format: Callable

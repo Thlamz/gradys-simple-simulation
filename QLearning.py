@@ -14,7 +14,7 @@ import numpy as np
 import numpy.random
 
 from control import Control, MobilityCommand, generate_random_control
-from controller import Controller
+from controller import Controller, QLearningParameters
 from environment import Environment
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -81,7 +81,7 @@ class SparseQTable(QTable):
         try:
             return self.q_table[state][control]
         except KeyError:
-            return self.configuration['qtable_initialization_value']
+            return self.configuration['controller_config']['qtable_initialization_value']
 
     def get_optimal_control(self, state: State) -> Control:
         try:
@@ -147,17 +147,19 @@ class QLearning(Controller):
     qtable_initialization_value: float
 
     configuration: SimulationConfiguration
+    controller_configuration: QLearningParameters
 
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
+        self.controller_configuration = configuration['controller_config']
 
         self.training = self.configuration['training']
         if self.training:
-            self.epsilon = configuration['epsilon_start']
+            self.epsilon = self.controller_configuration['epsilon_start']
         if not self.training:
             self.epsilon = 0
 
-        self.q_table = self.configuration['qtable_format'](configuration, environment)
+        self.q_table = self.controller_configuration['qtable_format'](configuration, environment)
 
         if configuration['verbose']:
             state_size = configuration['state'].possible_states(configuration, environment)
@@ -166,17 +168,17 @@ class QLearning(Controller):
 
         self.last_state = None
         self.last_control = None
-        self.last_q_value = self.configuration['qtable_initialization_value']
+        self.last_q_value = self.controller_configuration['qtable_initialization_value']
         self.total_reward = 0
         self.cum_avg_rewards = []
         self.epsilons = []
 
-        self.epsilon_start = self.configuration['epsilon_start']
-        self.epsilon_end = self.configuration['epsilon_end']
+        self.epsilon_start = self.controller_configuration['epsilon_start']
+        self.epsilon_end = self.controller_configuration['epsilon_end']
         self.epsilon_horizon = self.configuration['maximum_simulation_steps']
-        self.learning_rate = self.configuration['learning_rate']
-        self.gamma = self.configuration['gamma']
-        self.qtable_initialization_value = self.configuration['qtable_initialization_value']
+        self.learning_rate = self.controller_configuration['learning_rate']
+        self.gamma = self.controller_configuration['gamma']
+        self.qtable_initialization_value = self.controller_configuration['qtable_initialization_value']
 
     def decay_epsilon(self) -> None:
         if self.epsilon <= self.epsilon_end:
@@ -188,7 +190,7 @@ class QLearning(Controller):
             self.epsilons.append(self.epsilon)
 
     def compute_reward(self, simulation_step):
-        return self.configuration['reward_function'](self, simulation_step)
+        return self.controller_configuration['reward_function'](self, simulation_step)
 
     def get_control(self, simulation_step: int, current_state: State, current_control: Control) -> Control:
         reward = self.compute_reward(simulation_step)

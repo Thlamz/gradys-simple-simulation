@@ -1,10 +1,22 @@
 from pathlib import Path
-from typing import TypedDict, Callable, Union, Literal, Optional
+from typing import TypedDict, Callable, Optional, Union
+
+
+class QLearningParameters(TypedDict):
+    # Q Learning parameters
+    epsilon_start: float
+    epsilon_end: float
+    learning_rate: float
+    gamma: float
+    reward_function: Callable
+    qtable_initialization_value: float
+    qtable_file: Union[Path, None]
+    qtable_format: Callable
 
 
 class SimulationConfiguration(TypedDict):
-    controller: Callable
-    """Controller used to generate controls at every simulation step"""
+    controller: object
+    controller_config: Union[QLearningParameters, ]
 
     # State parameters
     state: Callable
@@ -16,15 +28,7 @@ class SimulationConfiguration(TypedDict):
     sensor_generation_probability: float
     sensor_packet_lifecycle: Optional[int]
 
-    # Q Learning parameters
-    epsilon_start: float
-    epsilon_end: float
-    learning_rate: float
-    gamma: float
-    reward_function: Callable
-    qtable_initialization_value: float
-    qtable_file: Union[Path, None]
-    qtable_format: Callable
+
 
     # Simulation parameters
     maximum_simulation_steps: int
