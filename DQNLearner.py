@@ -71,8 +71,12 @@ class MemoryBuffer:
 class DQNLearner(Controller):
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         super().__init__(configuration, environment)
+
         self.configuration: SimulationConfiguration = configuration
         self.controller_configuration: DQLearnerParameters = configuration['controller_config']
+
+        if configuration['verbose']:
+            print(f"Executing on device {device}")
 
         if self.configuration['verbose']:
             state_size = configuration['state'].possible_states(configuration, environment)

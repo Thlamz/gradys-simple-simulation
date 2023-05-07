@@ -271,4 +271,4 @@ if __name__ == '__main__':
         'testing_repetitions': 0,
         'maximum_simulation_steps': 10_000,
         'plots': True
-    }, ['controller_config'])
+    }, ['controller_config'], multi_processing=True)
