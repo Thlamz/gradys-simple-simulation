@@ -261,8 +261,8 @@ if __name__ == '__main__':
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
-        'num_agents': [1, 2, 3, 4],
-        'mission_size': [10, 15, 30],
+        'num_agents': [1],
+        'mission_size': [30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -279,6 +279,7 @@ if __name__ == '__main__':
             'target_network_update_rate': 100
         },
         'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 0,
-        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 100_000, 5)],
+        'testing_repetitions': 1,
+        'maximum_simulation_steps': [10_000_000],
+        'plots': True
     }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])
