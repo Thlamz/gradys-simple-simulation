@@ -2,12 +2,14 @@ import json
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
-from base_serializer import tuple_to_base_id, base_id_to_tuple
+import torch
+
+from device import device
 from environment import Environment
 from simulation_configuration import SimulationConfiguration
 
 
-class State():
+class State:
 
     @classmethod
     @abstractmethod
@@ -26,6 +28,10 @@ class State():
     def serialize(self) -> str:
         pass
 
+    @abstractmethod
+    def to_tensor(self) -> torch.Tensor:
+        pass
+
     @classmethod
     @abstractmethod
     def deserialize(cls, serialized: str):
@@ -34,6 +40,11 @@ class State():
     @classmethod
     @abstractmethod
     def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def size(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
         pass
 
 
@@ -56,6 +67,9 @@ class MobilityState(State):
     def serialize(self) -> str:
         return json.dumps(self.mobility)
 
+    def to_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.mobility, dtype=torch.float32, device=device).unsqueeze(0)
+
     def __eq__(self, other):
         return self.mobility == other.mobility
 
@@ -70,6 +84,10 @@ class MobilityState(State):
     @classmethod
     def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
         return configuration['mission_size'] ** configuration['num_agents']
+
+    @classmethod
+    def size(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        return configuration['num_agents']
 
 
 class SignedMobilityState(State):
@@ -93,6 +111,9 @@ class SignedMobilityState(State):
     def serialize(self) -> str:
         return json.dumps(self.mobility)
 
+    def to_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.mobility, dtype=torch.float32, device=device).unsqueeze(0)
+
     def __hash__(self):
         return hash(tuple(self.mobility))
 
@@ -108,6 +129,10 @@ class SignedMobilityState(State):
     @classmethod
     def possible_states(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
         return (configuration['mission_size'] * 2) ** configuration['num_agents']
+
+    @classmethod
+    def size(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        return configuration['num_agents']
 
 
 class CommunicationMobilityState(State):
@@ -133,6 +158,9 @@ class CommunicationMobilityState(State):
     def serialize(self) -> str:
         return json.dumps([self.mobility, self.communication])
 
+    def to_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.mobility + self.communication, dtype=torch.float32, device=device).unsqueeze(0)
+
     @classmethod
     def deserialize(cls, serialized: str):
         deserialized = json.loads(serialized)
@@ -147,6 +175,10 @@ class CommunicationMobilityState(State):
         mobility_count = configuration['mission_size'] ** configuration['num_agents']
         communication_count = 2 ** (configuration['mission_size'] - 1)
         return mobility_count * communication_count
+
+    @classmethod
+    def size(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        return configuration['num_agents'] + (configuration['mission_size'] - 1)
 
 
 class CommunicationMobilityPacketsState(State):
@@ -175,6 +207,9 @@ class CommunicationMobilityPacketsState(State):
     def serialize(self) -> str:
         return json.dumps([self.mobility, self.packets, self.communication])
 
+    def to_tensor(self) -> torch.Tensor:
+        return torch.tensor(self.mobility + self.packets + self.communication, dtype=torch.float32, device=device).unsqueeze(0)
+
     @classmethod
     def deserialize(cls, serialized: str):
         deserialized = json.loads(serialized)
@@ -191,3 +226,7 @@ class CommunicationMobilityPacketsState(State):
         packets_count = (configuration['mission_size'] - 1) ** configuration['num_agents']
         communication_count = 2 ** (configuration['mission_size'] - 1)
         return mobility_count * packets_count * communication_count
+
+    @classmethod
+    def size(cls, configuration: SimulationConfiguration, environment: Environment) -> int:
+        return configuration['num_agents'] * 2 + (configuration['mission_size'] - 1)

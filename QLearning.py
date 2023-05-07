@@ -68,11 +68,11 @@ class SparseQTable(QTable):
         self.initialize_q_table()
 
     def load_q_table(self):
-        with self.configuration['qtable_file'].open("rb") as file:
+        with self.configuration['model_file'].open("rb") as file:
             self.q_table = pickle.load(file)
 
     def initialize_q_table(self):
-        if self.configuration['qtable_file'] is not None and self.configuration['qtable_file'].is_file():
+        if self.configuration['model_file'] is not None and self.configuration['model_file'].is_file():
             self.load_q_table()
         else:
             self.q_table = {}
@@ -106,8 +106,8 @@ class SparseQTable(QTable):
             self.q_table[state][control] = q_value
 
     def export_qtable(self):
-        if self.configuration['qtable_file'] is not None:
-            with self.configuration['qtable_file'].open("wb") as file:
+        if self.configuration['model_file'] is not None:
+            with self.configuration['model_file'].open("wb") as file:
                 pickle.dump(self.q_table, file)
 
 

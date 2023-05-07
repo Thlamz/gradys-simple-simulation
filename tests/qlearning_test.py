@@ -12,7 +12,7 @@ class QTableTestCase(unittest.TestCase):
     def test_sparse_qtable(self):
         config = get_default_configuration()
         q_table_file = Path("./__sparse_qtable.json")
-        config['qtable_file'] = q_table_file
+        config['model_file'] = q_table_file
         env = Environment(config)
 
         q_table = SparseQTable(config, env)

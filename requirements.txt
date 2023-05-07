@@ -96,3 +96,4 @@ webencodings==0.5.1
 websocket-client==1.5.1
 widgetsnbextension==4.0.5
 tqdm~=4.65.0
+torch~=2.0.1+cu117

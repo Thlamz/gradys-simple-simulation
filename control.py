@@ -3,8 +3,10 @@ from enum import Enum
 from typing import NamedTuple, List
 
 import numpy
+import torch
 
 from base_serializer import base_id_to_tuple, tuple_to_base_id
+from device import device
 from environment import Environment
 from rng import rng
 from simulation_configuration import SimulationConfiguration
@@ -15,7 +17,7 @@ class MobilityCommand(Enum):
     REVERSE = 0
 
 
-class Control():
+class Control:
     """
     The control in this scenario has only one key, mobility. The enum value mobility[i] represents the direction
     agent i will move
@@ -28,6 +30,9 @@ class Control():
     def serialize(self) -> str:
         return json.dumps([command.value for command in self.mobility])
 
+    def to_tensor(self) -> torch.Tensor:
+        return torch.tensor([command.value for command in self.mobility], dtype=torch.int64, device=device).unsqueeze(0)
+
     def __eq__(self, other):
         return self.mobility == other.mobility
 
@@ -39,22 +44,21 @@ class Control():
         deserialized_value = json.loads(serialized)
         return Control(tuple(MobilityCommand(value) for value in deserialized_value))
 
+    @classmethod
+    def size(cls, configuration: SimulationConfiguration, environment: Environment):
+        return configuration['num_agents']
+
 
 def validate_control(control: Control, configuration: SimulationConfiguration, environment: Environment) -> bool:
     """
     Validates that a given control applied to the current state generates a valid next state
     """
-    for agent, command in zip(environment.agents, control.mobility):
-        position = agent.position
-        if position == 0 and command == MobilityCommand.REVERSE:
-            return False
+    return len(control.mobility) == configuration['num_agents']
 
-        if position == configuration['mission_size'] - 1 and command == MobilityCommand.FORWARDS:
-            return False
-    return True
 
 rng_batch = []
 rng_batch_cursor = 0
+
 
 # Optimization: Batching RNG generation for better performance
 def _command_rng(count) -> List[int]:
@@ -85,15 +89,15 @@ def generate_random_control(configuration: SimulationConfiguration, environment:
     return control
 
 
-def execute_control(control: Control, _configuration: SimulationConfiguration, environment: Environment):
+def execute_control(control: Control, configuration: SimulationConfiguration, environment: Environment):
     """
     Executes a control on the current state, generating a next state
     """
 
     for agent, command in zip(environment.agents, control.mobility):
         if command == MobilityCommand.FORWARDS:
-            agent.position += 1
+            agent.position = min(agent.position + 1, configuration['mission_size'] - 1)
             agent.reversed = False
         else:
-            agent.position -= 1
+            agent.position = max(agent.position - 1, 0)
             agent.reversed = True
