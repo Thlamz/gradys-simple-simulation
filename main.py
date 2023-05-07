@@ -255,20 +255,30 @@ if __name__ == '__main__':
         'batch_size': [64, 128, 256, 512],
         'hidden_layer_size': [16, 32, 64, 128],
         'num_hidden_layers': [1, 2, 3],
-        'target_network_update_rate': [50, 100, 500, 1000]
+        'target_network_update_rate': [100, 500, 1000]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
-        'num_agents': 1,
-        'mission_size': 5,
+        'num_agents': [1, 2, 3, 4],
+        'mission_size': [10, 15, 30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
-        'controller_config': controller_config_permutations,
+        'controller_config': {
+            'reward_function': unique_packets,
+            'epsilon_start': 1,
+            'epsilon_end': 0.1,
+            'learning_rate': 0.0005,
+            'gamma': 0.99,
+            'memory_size': 10000,
+            'batch_size': 64,
+            'hidden_layer_size': 64,
+            'num_hidden_layers': 2,
+            'target_network_update_rate': 100
+        },
         'state': CommunicationMobilityPacketsState,
         'testing_repetitions': 0,
-        'maximum_simulation_steps': 10_000,
-        'plots': True
-    }, ['controller_config'], multi_processing=True)
+        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 100_000, 5)],
+    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])
