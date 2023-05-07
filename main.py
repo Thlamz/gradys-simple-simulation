@@ -12,6 +12,7 @@ import numpy as np
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 
+from DQNLearner import DQNLearner
 from Dadca import Dadca
 from QLearning import QLearning, SparseQTable
 from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward, delivery_and_pickup, \
@@ -37,11 +38,11 @@ def get_default_configuration() -> SimulationConfiguration:
             'epsilon_end': 0.001,
             'learning_rate': 0.1,
             'gamma': 0.99,
-            'reward_function': throughput_reward,
+            'reward_function': unique_packets,
             'qtable_initialization_value': 0,
-            'qtable_file': None,
             'qtable_format': SparseQTable,
         },
+        'model_file': None,
         'state': MobilityState,
         'mission_size': 20,
         'num_agents': 2,
@@ -149,15 +150,15 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
     config = {
         **get_default_configuration(),
         **permutation,
-        'qtable_file': q_table_path
+        'model_file': q_table_path
     }
     training_time = 0
     results = []
-    while training_time < config.get('target_total_training_time', 1):
+    while training_time < config.get('target_total_training_steps', 1):
         results.append(run_simulation(config))
         training_time += config['maximum_simulation_steps']
 
-    if config['controller'] == QLearning:
+    if config['controller'] != Dadca:
         for _ in range(config['testing_repetitions']):
             test_config = config.copy()
             test_config['training'] = False
@@ -213,7 +214,7 @@ def run_campaign(inputs: dict,
         small_results = list(process_map(_run_permutation,
                                          enumerate(small_permutations),
                                          max_workers=min(max_processes or 8, 8),
-                                         total=len(small_permutations),))
+                                         total=len(small_permutations), ))
 
         medium_permutations = [permutation
                                for permutation in mapped_permutations
@@ -244,14 +245,30 @@ def run_campaign(inputs: dict,
 
 
 if __name__ == '__main__':
+    controller_config_permutation_dict = {
+        'reward_function': [unique_packets],
+        'epsilon_start': [1],
+        'epsilon_end': [0.1],
+        'learning_rate': [0.0005],
+        'gamma': [0.99],
+        'memory_size': [100, 1000, 10_000],
+        'batch_size': [64, 128, 256, 512],
+        'hidden_layer_size': [16, 32, 64, 128],
+        'num_hidden_layers': [1, 2, 3],
+        'target_network_update_rate': [50, 100, 500, 1000]
+    }
+    keys, values = zip(*controller_config_permutation_dict.items())
+    controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+
     run_campaign({
-        'num_agents': [2],
-        'mission_size': [5],
+        'num_agents': 1,
+        'mission_size': 5,
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
-        'controller': QLearning,
-        'reward_function': unique_packets,
+        'controller': DQNLearner,
+        'controller_config': controller_config_permutations,
         'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 25,
-        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 1_000_000, 100)],
-    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'], multi_processing=True, max_processes=8)
+        'testing_repetitions': 0,
+        'maximum_simulation_steps': 10_000,
+        'plots': True
+    }, ['controller_config'])
