@@ -1,7 +1,8 @@
 import random
 from collections import deque
-from typing import Optional, TypedDict, Deque, List
+from typing import Optional, TypedDict, Deque, List, Tuple
 
+import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
 
@@ -52,20 +53,44 @@ class MemoryBuffer:
     """
     This class stores recollections of the previous 'memory_size' iterations of the simulation
     """
-    def __init__(self, size: int):
-        self.memory: Deque[Memory] = deque()
-        self.size = size
+    def __init__(self, configuration: SimulationConfiguration, environment: Environment):
+        memory_size: int = configuration['controller_config']['memory_size']
+
+        state_size = configuration['state'].size(configuration, environment)
+
+        self.state_memory = torch.zeros((memory_size, state_size), dtype=torch.float32, device=device)
+        self.control_memory = torch.zeros((memory_size, 1), dtype=torch.int64, device=device)
+        self.next_state_memory = torch.zeros((memory_size, state_size), dtype=torch.float32, device=device)
+        self.reward_memory = torch.zeros((memory_size, 1), dtype=torch.float32, device=device)
+
+        self.current_index = 0
+        self.current_size = 0
+
+        self.size = memory_size
+        self.indexes = np.array(range(memory_size))
 
     def append(self, memory: Memory):
-        self.memory.append(memory)
-        if len(self.memory) > self.size:
-            self.memory.popleft()
+        self.state_memory[self.current_index, :] = memory['state']
+        self.control_memory[self.current_index, :] = memory['control']
+        self.next_state_memory[self.current_index, :] = memory['next_state']
+        self.reward_memory[self.current_index, :] = memory['reward']
 
-    def sample(self, number) -> List[Memory]:
-        return random.sample(self.memory, number)
+        self.current_index += 1
+        self.current_size = min(self.current_size + 1, self.size)
+        if self.current_index >= self.size:
+            self.current_index = 0
+
+    def sample(self, number) -> Memory:
+        indexes = np.random.choice(self.indexes[:self.current_size], number)
+        return {
+            "state": self.state_memory[indexes],
+            "control": self.control_memory[indexes],
+            "next_state": self.next_state_memory[indexes],
+            "reward": self.reward_memory[indexes]
+        }
 
     def __len__(self):
-        return len(self.memory)
+        return self.current_size
 
 
 class DQNLearner(Controller):
@@ -123,7 +148,7 @@ class DQNLearner(Controller):
                                          lr=self.controller_configuration['learning_rate'],
                                          amsgrad=True)
 
-        self.memory_buffer = MemoryBuffer(self.controller_configuration['memory_size'])
+        self.memory_buffer = MemoryBuffer(configuration, environment)
 
         # Statistical variables, only useful to generate metrics
         self.total_reward = 0
@@ -154,20 +179,22 @@ class DQNLearner(Controller):
         return self.controller_configuration['reward_function'](self, simulation_step)
 
     def optimize(self, simulation_step):
+        batch_size = self.controller_configuration['batch_size']
+
         # Sampling 'batch_size' examples from the memory buffer. This is used to implement a strategy called
         # memory replay. Instead of training the model with the most current state and action pairs, previous
         # simulation iterations are recalled and fed through the network. This improves traininig performance.
-        batch: List[Memory] = self.memory_buffer.sample(self.controller_configuration['batch_size'])
+        memory_batch = self.memory_buffer.sample(batch_size)
 
-        state_batch = torch.cat([memory['state'] for memory in batch])
-        next_state_batch = torch.cat([memory['next_state'] for memory in batch])
-        control_batch = torch.cat([memory['control'] for memory in batch])
-        reward_batch = torch.cat([memory['reward'] for memory in batch])
+        state_batch = memory_batch['state']
+        next_state_batch = memory_batch['next_state']
+        control_batch = memory_batch['control']
+        reward_batch = memory_batch['reward'].view((batch_size,))
 
         # Batch is fed through the policy model, the result is the estimated QValue for every action/control pair
         state_q_values = self.policy_model(state_batch)
         # Gathering only the QValues from the actions actually performed by the agents
-        state_action_q_values = state_q_values.gather(1, control_batch.unsqueeze(1))
+        state_action_q_values = state_q_values.gather(1, control_batch).view((batch_size,))
 
         with torch.no_grad():
             # The next state is the state observed after applying a control to a state. The target model is used to
@@ -179,7 +206,7 @@ class DQNLearner(Controller):
 
         # A loss function is calculated based on how far state_action_q_values were from expected_q_values
         criterion = nn.SmoothL1Loss()
-        loss = criterion(state_action_q_values, expected_q_values.unsqueeze(1))
+        loss = criterion(state_action_q_values, expected_q_values)
 
         # Optimize the model to minimize this loss
         self.optimizer.zero_grad()
@@ -217,7 +244,9 @@ class DQNLearner(Controller):
             control = generate_random_control(self.configuration, self.environment)
         else:
             with torch.no_grad():
-                policy = self.policy_model(current_state.to_tensor()).max(1)[1].item()
+                state_tensor = current_state.to_tensor()
+                q_values = self.policy_model(state_tensor)
+                policy = q_values.max(1)[1].item()
                 mobility = base_id_to_tuple(policy, 2, self.configuration['num_agents'])
                 control = Control(tuple(MobilityCommand(value) for value in mobility))
 
