@@ -284,4 +284,4 @@ if __name__ == '__main__':
         'maximum_simulation_steps': 10_000,
         'target_total_training_steps': [int(x) for x in np.linspace(10_000, 100_000, 10)],
         'plots': False
-    }, ['target_total_training_steps', 'num_agents', 'mission_size'])
+    }, ['target_total_training_steps', 'num_agents', 'mission_size'], multi_processing=True, max_processes=1)
