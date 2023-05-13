@@ -16,7 +16,7 @@ from DQNLearner import DQNLearner
 from Dadca import Dadca
 from QLearning import QLearning, SparseQTable
 from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward, delivery_and_pickup, \
-    unique_packets
+    unique_packets, smooth_unique_packets
 from simulation import Simulation
 
 import seaborn as sns
@@ -245,24 +245,24 @@ def run_campaign(inputs: dict,
 
 
 if __name__ == '__main__':
-    controller_config_permutation_dict = {
-        'reward_function': [unique_packets],
-        'epsilon_start': [1],
-        'epsilon_end': [0.1],
-        'learning_rate': [0.0005],
-        'gamma': [0.99],
-        'memory_size': [100, 1000, 10_000],
-        'batch_size': [64, 128, 256, 512],
-        'hidden_layer_size': [16, 32, 64, 128],
-        'num_hidden_layers': [1, 2, 3],
-        'target_network_update_rate': [100, 500, 1000]
-    }
-    keys, values = zip(*controller_config_permutation_dict.items())
-    controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    # controller_config_permutation_dict = {
+    #     'reward_function': [unique_packets],
+    #     'epsilon_start': [1],
+    #     'epsilon_end': [0.1],
+    #     'learning_rate': [0.0005],
+    #     'gamma': [0.99],
+    #     'memory_size': [10_000],
+    #     'batch_size': [64],
+    #     'hidden_layer_size': [64],
+    #     'num_hidden_layers': [2],
+    #     'target_network_update_rate': [100]
+    # }
+    # keys, values = zip(*controller_config_permutation_dict.items())
+    # controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
-        'num_agents': [1],
-        'mission_size': [30],
+        'num_agents': [1, 2],
+        'mission_size': [5, 10, 15, 20, 25, 30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -272,14 +272,16 @@ if __name__ == '__main__':
             'epsilon_end': 0.1,
             'learning_rate': 0.0005,
             'gamma': 0.99,
-            'memory_size': 10000,
+            'memory_size': 10_000,
             'batch_size': 64,
             'hidden_layer_size': 64,
             'num_hidden_layers': 2,
             'target_network_update_rate': 100
         },
+        # 'controller_config': controller_config_permutations,
         'state': CommunicationMobilityPacketsState,
         'testing_repetitions': 1,
-        'maximum_simulation_steps': [10_000_000],
-        'plots': True
-    }, ['maximum_simulation_steps', 'mission_size', 'num_agents'])
+        'maximum_simulation_steps': 10_000,
+        'target_total_training_steps': [int(x) for x in np.linspace(10_000, 100_000, 10)],
+        'plots': False
+    }, ['target_total_training_steps', 'num_agents', 'mission_size'])
