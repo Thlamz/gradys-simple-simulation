@@ -81,3 +81,17 @@ def unique_packets(self: QLearning, simulation_step):
 
     self.last_agent_sources = [agent.sources.copy() for agent in self.environment.agents]
     return score
+
+
+def smooth_unique_packets(self: QLearning, simulation_step):
+    if simulation_step == 0:
+        self.last_agent_sources = [agent.sources.copy() for agent in self.environment.agents]
+        return 0
+
+    score = 0
+    for index, agent in enumerate(self.environment.agents):
+        if agent.position == 0:
+            score += (len(self.last_agent_sources[index]) ** 2) / (self.configuration['mission_size'] - 1) ** 2
+
+    self.last_agent_sources = [agent.sources.copy() for agent in self.environment.agents]
+    return score
