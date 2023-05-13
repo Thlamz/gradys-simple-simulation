@@ -53,6 +53,14 @@ class Simulation:
                 if probability < self.configuration['sensor_generation_probability']:
                     sensor.add_packet(self.simulation_step)
 
+        # Simulating sensor packet pickup
+        for index, agent in enumerate(self.environment.agents):
+            agent_mobility = agent.position
+            if agent.position > 0:
+                agent.packets += self.environment.sensors[agent_mobility - 1].count_update_packets(self.simulation_step)
+                agent.sources.add(agent.position)
+                self.environment.sensors[agent_mobility - 1].clear_packets()
+
         # Simulate message exchange
         for index1, agent1 in enumerate(self.environment.agents):
             if self.U.mobility[index1] == MobilityCommand.FORWARDS:
@@ -69,17 +77,13 @@ class Simulation:
                     agent2.packets = 0
                     agent2.sources.clear()
 
-        # Simulating sensor packet pickup
+        # Simulating packet delivery
         for index, agent in enumerate(self.environment.agents):
             agent_mobility = agent.position
             if agent_mobility == 0:
                 self.environment.ground_station.packets += agent.packets
                 agent.packets = 0
                 agent.sources.clear()
-            else:
-                agent.packets += self.environment.sensors[agent_mobility - 1].count_update_packets(self.simulation_step)
-                agent.sources.add(agent.position)
-                self.environment.sensors[agent_mobility - 1].clear_packets()
 
         self.X = self.configuration['state'].build(self.configuration, self.environment)
         self.simulation_step += 1
