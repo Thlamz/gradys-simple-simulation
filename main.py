@@ -262,7 +262,7 @@ if __name__ == '__main__':
 
     run_campaign({
         'num_agents': [1, 2],
-        'mission_size': [5, 10, 15, 20, 25, 30],
+        'mission_size': [10, 25, 50],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
