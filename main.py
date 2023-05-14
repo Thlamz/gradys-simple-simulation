@@ -6,7 +6,7 @@ import os
 import random
 from functools import reduce
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -58,41 +58,47 @@ def get_default_configuration() -> SimulationConfiguration:
     }
 
 
-def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
+def run_simulation(train_configuration: SimulationConfiguration,
+                   test_configuration: Optional[SimulationConfiguration] = None) -> List[SimulationResults]:
     """
     Runs a single simulation with a specified configuration. This function's main objective is to run the simulation
     steps and record telemetry about them.
-    :param configuration: Configuration to run the simulation with
+    :param train_configuration: Configuration to run the simulation with
     :return: A summary of the simulation's results
     """
-    simulation = Simulation(configuration)
+    simulation = Simulation(train_configuration)
 
     throughputs = []
     throughput_sum = 0
-    agent_positions = {index: [] for index in range(configuration['num_agents'])}
+    agent_positions = {index: [] for index in range(train_configuration['num_agents'])}
 
-    max_possible_throughput = (configuration['mission_size'] - 1) * (1 / configuration['sensor_generation_frequency'])
-    expected_throughput = ((configuration['mission_size'] - 1)
-                           * (1 / configuration['sensor_generation_frequency'])
-                           * configuration['sensor_generation_probability'])
-    if configuration['verbose']:
+    max_possible_throughput = (train_configuration['mission_size'] - 1) * (1 / train_configuration['sensor_generation_frequency'])
+    expected_throughput = ((train_configuration['mission_size'] - 1)
+                           * (1 / train_configuration['sensor_generation_frequency'])
+                           * train_configuration['sensor_generation_probability'])
+    if train_configuration['verbose']:
         print(f"Maximum possible throughput {max_possible_throughput}")
         print(f"Expected throughput {expected_throughput}")
 
-    iterator = range(configuration['maximum_simulation_steps'])
-    if not configuration['step_by_step'] and configuration['verbose']:
+    iterator = range(train_configuration['maximum_simulation_steps'])
+    if not train_configuration['step_by_step'] and train_configuration['verbose']:
         iterator = tqdm(iterator)
+
+    # Checking if live testing is enabled
+    should_live_test = train_configuration['live_testing_frequency'] is not None and test_configuration is not None
+
+    results: List[SimulationResults] = []
 
     # Simulation iterations
     for _ in iterator:
         # Step by step visualization of simulation state
-        if configuration['step_by_step']:
+        if train_configuration['step_by_step']:
             print("---------------------")
             print(f"Ground Station: {simulation.environment.ground_station.packets}")
             print(
-                f"Sensors: [{', '.join(str(sensor.count_update_packets(simulation.simulation_step, configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
+                f"Sensors: [{', '.join(str(sensor.count_update_packets(simulation.simulation_step, train_configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
             agent_string = ""
-            for i in range(configuration['mission_size']):
+            for i in range(train_configuration['mission_size']):
                 agent_string += "-("
                 agent_string += ", ".join(f"{index}[{agent.packets}]"
                                           for index, agent in enumerate(simulation.environment.agents) if
@@ -101,39 +107,58 @@ def run_simulation(configuration: SimulationConfiguration) -> SimulationResults:
             print(f"Agents: [{agent_string}]")
 
             input()
+
         simulation.simulate()
 
+        # Calculating simulation step statistics
         throughput_sum += simulation.environment.ground_station.packets / simulation.simulation_step
-        if configuration['plots']:
+        if train_configuration['plots']:
             for index, agent in enumerate(simulation.environment.agents):
                 agent_positions[index].append(agent.position)
 
             throughputs.append(simulation.environment.ground_station.packets / simulation.simulation_step)
 
+        # Executing live testing if required
+        if should_live_test and simulation.simulation_step % train_configuration['live_testing_frequency'] == 0:
+            print("\n\n-------------------------------------------------------------------------\n")
+            print(f"Executing live test at step {simulation.simulation_step}\n")
+
+            # Calling finalize function so the controller serializes and persists the learned results
+            simulation.controller.finalize()
+            # Recursively running a test simulation and saving results
+            live_test_result = run_simulation(test_configuration)[0]
+
+            # Filling simulation step where live test was performed
+            live_test_result['config']['maximum_simulation_steps'] = str(simulation.simulation_step)
+
+            results.append(live_test_result)
+            print("\n-------------------------------------------------------------------------\n\n")
+
+    # Gathering training results
     controller_results = simulation.controller.finalize()
 
-    if configuration['plots']:
+    if train_configuration['plots']:
         sns.lineplot(data=throughputs).set(title='Throughput')
         plt.show()
 
         plt.figure(figsize=(80, 8))
         sns.lineplot(data=agent_positions)
-        sns.lineplot().set(title='Agent Positions', ylim=(0, configuration['mission_size'] - 1))
+        sns.lineplot().set(title='Agent Positions', ylim=(0, train_configuration['mission_size'] - 1))
         plt.show()
 
-    if configuration['verbose']:
-        print(f"Simulation steps: {simulation.simulation_step}")
+    if train_configuration['verbose']:
+        print(f"\nSimulation steps: {simulation.simulation_step}")
         print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
         print(f"Last throughput: {simulation.environment.ground_station.packets / simulation.simulation_step}")
-    return {
+    return [{
         'max_possible_throughput': max_possible_throughput,
         'expected_throughput': expected_throughput,
         'avg_throughput': throughput_sum / simulation.simulation_step,
         'config': {
-            key: str(value) for key, value in configuration.items()
+            key: str(value) for key, value in train_configuration.items()
         },
         'controller': controller_results
-    }
+    }] + results
 
 
 def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
@@ -152,18 +177,20 @@ def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
         **permutation,
         'model_file': q_table_path
     }
+
+    test_config = config.copy()
+    test_config['training'] = False
+    test_config['maximum_simulation_steps'] = 10000
+
     training_time = 0
     results = []
     while training_time < config.get('target_total_training_steps', 1):
-        results.append(run_simulation(config))
+        results.extend(run_simulation(config, test_config))
         training_time += config['maximum_simulation_steps']
 
     if config['controller'] != Dadca:
         for _ in range(config['testing_repetitions']):
-            test_config = config.copy()
-            test_config['training'] = False
-            test_config['maximum_simulation_steps'] = 10000
-            test_results = run_simulation(test_config)
+            test_results = run_simulation(test_config)[0]
 
             # Making sure the steps reported are related to the training not testing
             test_results['config']['maximum_simulation_steps'] = str(config['maximum_simulation_steps'])
@@ -231,9 +258,9 @@ def run_campaign(inputs: dict,
         print(f"\nRunning {len(large_permutations)} larger simulations synchronously\n")
         big_results = list(tqdm(map(_run_permutation, enumerate(large_permutations)), total=len(large_permutations)))
 
-        results = small_results + medium_results + big_results
+        results = list(itertools.chain(small_results, medium_results, big_results))
     else:
-        results = list(map(_run_permutation, enumerate(mapped_permutations)))
+        results = list(itertools.chain(map(_run_permutation, enumerate(mapped_permutations))))
 
     campaign = {
         'campaign_variables': variable_keys + ['training'],
@@ -261,8 +288,8 @@ if __name__ == '__main__':
     # controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
-        'num_agents': [1, 2],
-        'mission_size': [int(x) for x in np.linspace(10, 30, 8)],
+        'num_agents': 1,
+        'mission_size': 25,
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -279,7 +306,8 @@ if __name__ == '__main__':
             'target_network_update_rate': 'auto'
         },
         'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 5,
-        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 100_000, 3)],
-        'repetitions': [1, 2],
-    }, ['maximum_simulation_steps', 'repetitions', 'num_agents', 'mission_size'], multi_processing=True, max_processes=1)
+        'testing_repetitions': 1,
+        'maximum_simulation_steps': 1_000_000,
+        'live_testing_frequency': 10_000,
+        'repetitions': [1, 2, 3],
+    }, ['repetitions'], multi_processing=True, max_processes=1)

@@ -52,6 +52,7 @@ class SimulationConfiguration(TypedDict):
 
     # Simulation parameters
     maximum_simulation_steps: int
+    live_testing_frequency: Optional[int]
     target_total_training_steps: Optional[int]
     training: bool
     step_by_step: bool
