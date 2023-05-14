@@ -262,7 +262,7 @@ if __name__ == '__main__':
 
     run_campaign({
         'num_agents': [1, 2],
-        'mission_size': [10, 25, 30],
+        'mission_size': [int(x) for x in np.linspace(10, 30, 8)],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -279,7 +279,7 @@ if __name__ == '__main__':
             'target_network_update_rate': 'auto'
         },
         'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 1,
-        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 100_000, 5)],
-        'repetitions': [1, 2, 3],
+        'testing_repetitions': 5,
+        'maximum_simulation_steps': [int(x) for x in np.linspace(10_000, 100_000, 3)],
+        'repetitions': [1, 2],
     }, ['maximum_simulation_steps', 'repetitions', 'num_agents', 'mission_size'], multi_processing=True, max_processes=1)
