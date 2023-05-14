@@ -140,7 +140,10 @@ class DQNLearner(Controller):
             self.target_model.load_state_dict(self.policy_model.state_dict())
 
             # Update rate of the target network
-            self.target_network_update_rate = self.controller_configuration['target_network_update_rate']
+            if self.controller_configuration['target_network_update_rate'] == 'auto':
+                self.target_network_update_rate = self.configuration['maximum_simulation_steps'] // 100
+            else:
+                self.target_network_update_rate = self.controller_configuration['target_network_update_rate']
         # endregion
 
         if self.training:
