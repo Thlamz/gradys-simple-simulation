@@ -120,8 +120,9 @@ def run_simulation(train_configuration: SimulationConfiguration,
 
         # Executing live testing if required
         if should_live_test and simulation.simulation_step % train_configuration['live_testing_frequency'] == 0:
-            print("\n\n-------------------------------------------------------------------------\n")
-            print(f"Executing live test at step {simulation.simulation_step}\n")
+            if train_configuration['verbose']:
+                print("\n\n-------------------------------------------------------------------------\n")
+                print(f"Executing live test at step {simulation.simulation_step}\n")
 
             # Calling finalize function so the controller serializes and persists the learned results
             simulation.controller.finalize()
@@ -132,7 +133,8 @@ def run_simulation(train_configuration: SimulationConfiguration,
             live_test_result['config']['maximum_simulation_steps'] = str(simulation.simulation_step)
 
             results.append(live_test_result)
-            print("\n-------------------------------------------------------------------------\n\n")
+            if train_configuration['verbose']:
+                print("\n-------------------------------------------------------------------------\n\n")
 
     # Gathering training results
     controller_results = simulation.controller.finalize()
@@ -288,8 +290,8 @@ if __name__ == '__main__':
     # controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
-        'num_agents': [1, 2, 3, 4],
-        'mission_size': [10, 15, 30],
+        'num_agents': [1],
+        'mission_size': [10, 15, 20],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -309,5 +311,5 @@ if __name__ == '__main__':
         'testing_repetitions': 1,
         'maximum_simulation_steps': 1_000_000,
         'live_testing_frequency': 10_000,
-        'repetitions': [1, 2, 3],
+        'repetitions': [1],
     }, ['repetitions', 'num_agents', 'mission_size'], multi_processing=True, max_processes=1)
