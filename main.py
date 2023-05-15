@@ -288,8 +288,8 @@ if __name__ == '__main__':
     # controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
-        'num_agents': 1,
-        'mission_size': 25,
+        'num_agents': [1, 2, 3, 4],
+        'mission_size': [10, 15, 30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -310,4 +310,4 @@ if __name__ == '__main__':
         'maximum_simulation_steps': 1_000_000,
         'live_testing_frequency': 10_000,
         'repetitions': [1, 2, 3],
-    }, ['repetitions'], multi_processing=True, max_processes=1)
+    }, ['repetitions', 'num_agents', 'mission_size'], multi_processing=True, max_processes=1)
