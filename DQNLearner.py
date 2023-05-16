@@ -260,7 +260,7 @@ class DQNLearner(Controller):
 
     def finalize(self) -> dict:
         if self.configuration['model_file'] is not None and self.training:
-            torch.save(self.target_model.state_dict(), self.configuration['model_file'])
+            torch.save(self.policy_model.state_dict(), self.configuration['model_file'])
 
         if self.configuration['plots']:
             sns.lineplot(data=self.cum_avg_rewards).set(title="Cum Avg Train Rewards")

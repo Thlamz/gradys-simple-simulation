@@ -85,7 +85,7 @@ def run_simulation(train_configuration: SimulationConfiguration,
         iterator = tqdm(iterator)
 
     # Checking if live testing is enabled
-    should_live_test = train_configuration['live_testing_frequency'] is not None and test_configuration is not None
+    should_live_test = train_configuration.get('live_testing_frequency') is not None and test_configuration is not None
 
     results: List[SimulationResults] = []
 
@@ -119,6 +119,7 @@ def run_simulation(train_configuration: SimulationConfiguration,
             throughputs.append(simulation.environment.ground_station.packets / simulation.simulation_step)
 
         # Executing live testing if required
+        # A live test is a short test executed during training to evaluate the progress of the learning process
         if should_live_test and simulation.simulation_step % train_configuration['live_testing_frequency'] == 0:
             if train_configuration['verbose']:
                 print("\n\n-------------------------------------------------------------------------\n")
@@ -126,13 +127,17 @@ def run_simulation(train_configuration: SimulationConfiguration,
 
             # Calling finalize function so the controller serializes and persists the learned results
             simulation.controller.finalize()
-            # Recursively running a test simulation and saving results
-            live_test_result = run_simulation(test_configuration)[0]
 
-            # Filling simulation step where live test was performed
-            live_test_result['config']['maximum_simulation_steps'] = str(simulation.simulation_step)
+            for i in range(train_configuration['testing_repetitions']):
+                if train_configuration['verbose']:
+                    print(f"Running live test repetition {i+1}\n\n")
+                # Recursively running a test simulation and saving results
+                live_test_result = run_simulation(test_configuration)[0]
 
-            results.append(live_test_result)
+                # Filling simulation step where live test was performed
+                live_test_result['config']['maximum_simulation_steps'] = str(simulation.simulation_step)
+
+                results.append(live_test_result)
             if train_configuration['verbose']:
                 print("\n-------------------------------------------------------------------------\n\n")
 
