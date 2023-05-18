@@ -65,7 +65,6 @@ class MemoryBuffer:
 
         self.current_index = 0
         self.current_size = 0
-        self.indices = torch.zeros(memory_size, device=device)
 
         self.size = memory_size
 
@@ -75,7 +74,6 @@ class MemoryBuffer:
         self.next_state_memory[self.current_index, :] = memory['next_state']
         self.reward_memory[self.current_index, :] = memory['reward']
 
-        self.indices[self.current_index] = 1
         self.current_index += 1
         self.current_size = min(self.current_size + 1, self.size)
 
@@ -83,7 +81,7 @@ class MemoryBuffer:
             self.current_index = 0
 
     def sample(self, number) -> Memory:
-        indexes = torch.tensor(rng.choice(self.current_index, number, replace=False, shuffle=False), device=device)
+        indexes = torch.tensor(rng.choice(self.current_size, number, replace=False, shuffle=False), device=device)
 
         return {
             "state": self.state_memory[indexes],
