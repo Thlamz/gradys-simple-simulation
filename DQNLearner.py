@@ -65,9 +65,9 @@ class MemoryBuffer:
 
         self.current_index = 0
         self.current_size = 0
+        self.indices = torch.zeros(memory_size, device=device)
 
         self.size = memory_size
-        self.indexes = np.array(range(memory_size))
 
     def append(self, memory: Memory):
         self.state_memory[self.current_index, :] = memory['state']
@@ -75,13 +75,16 @@ class MemoryBuffer:
         self.next_state_memory[self.current_index, :] = memory['next_state']
         self.reward_memory[self.current_index, :] = memory['reward']
 
+        self.indices[self.current_index] = 1
         self.current_index += 1
         self.current_size = min(self.current_size + 1, self.size)
+
         if self.current_index >= self.size:
             self.current_index = 0
 
     def sample(self, number) -> Memory:
-        indexes = np.random.choice(self.indexes[:self.current_size], number)
+        indexes = torch.tensor(rng.choice(self.current_index, number, replace=False, shuffle=False), device=device)
+
         return {
             "state": self.state_memory[indexes],
             "control": self.control_memory[indexes],
@@ -150,6 +153,8 @@ class DQNLearner(Controller):
             self.optimizer = optim.AdamW(self.policy_model.parameters(),
                                          lr=self.controller_configuration['learning_rate'],
                                          amsgrad=True)
+            self.criterion = nn.SmoothL1Loss()
+
 
         self.memory_buffer = MemoryBuffer(configuration, environment)
 
@@ -208,13 +213,13 @@ class DQNLearner(Controller):
         expected_q_values = (next_state_q_values * self.controller_configuration['gamma']) + reward_batch
 
         # A loss function is calculated based on how far state_action_q_values were from expected_q_values
-        criterion = nn.SmoothL1Loss()
-        loss = criterion(state_action_q_values, expected_q_values)
+        loss = self.criterion(state_action_q_values, expected_q_values)
 
         # Optimize the model to minimize this loss
         self.optimizer.zero_grad()
         loss.backward()
-        self.losses.append(loss.item())
+        if self.configuration['plots']:
+            self.losses.append(loss.item())
         # In-place gradient clipping
         torch.nn.utils.clip_grad_value_(self.policy_model.parameters(), 100)
         self.optimizer.step()
