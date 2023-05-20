@@ -243,16 +243,17 @@ def run_campaign(inputs: dict,
     if multi_processing:
         small_permutations = [permutation
                               for permutation in mapped_permutations
-                              if permutation['maximum_simulation_steps'] <= 1_000_000]
+                              if permutation['maximum_simulation_steps'] <= 1_000_000 or permutation['controller'] != QLearning]
         print(f"Running {len(small_permutations)} smaller simulations in parallel\n")
         small_results = list(process_map(_run_permutation,
                                          enumerate(small_permutations),
                                          max_workers=min(max_processes or 8, 8),
-                                         total=len(small_permutations), ))
+                                         total=len(small_permutations)))
 
         medium_permutations = [permutation
                                for permutation in mapped_permutations
-                               if 1_000_000 < permutation['maximum_simulation_steps'] <= 5_000_000]
+                               if 1_000_000 < permutation['maximum_simulation_steps'] <= 5_000_000
+                               and permutation not in small_permutations]
         print(f"\nRunning {len(medium_permutations)} medium simulations in 3 worker parallel\n")
         medium_results = list(process_map(_run_permutation,
                                           enumerate(medium_permutations),
@@ -261,7 +262,8 @@ def run_campaign(inputs: dict,
 
         large_permutations = [permutation
                               for permutation in mapped_permutations
-                              if permutation['maximum_simulation_steps'] > 5_000_000]
+                              if permutation['maximum_simulation_steps'] > 5_000_000
+                              and permutation not in medium_permutations]
         print(f"\nRunning {len(large_permutations)} larger simulations synchronously\n")
         big_results = list(tqdm(map(_run_permutation, enumerate(large_permutations)), total=len(large_permutations)))
 
