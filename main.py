@@ -293,14 +293,14 @@ if __name__ == '__main__':
         'hidden_layer_size': [64],
         'num_hidden_layers': [2],
         'target_network_update_rate': ['auto'],
-        'optimizing_rate': [5]
+        'optimizing_rate': [10]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
         'num_agents': [1],
-        'mission_size': [5, 20, 30, 40, 50],
+        'mission_size': [50],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -323,4 +323,4 @@ if __name__ == '__main__':
         'maximum_simulation_steps': 10_000_000,
         'live_testing_frequency': 100_000,
         'repetitions': [1, 2, 3],
-    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=1)
+    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'])
