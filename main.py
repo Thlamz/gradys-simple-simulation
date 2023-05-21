@@ -5,6 +5,7 @@ import multiprocessing
 import os
 import random
 from functools import reduce
+from inspect import isfunction
 from pathlib import Path
 from typing import List, Tuple, Optional
 
@@ -162,7 +163,7 @@ def run_simulation(train_configuration: SimulationConfiguration,
         'expected_throughput': expected_throughput,
         'avg_throughput': throughput_sum / simulation.simulation_step,
         'config': {
-            key: str(value) for key, value in train_configuration.items()
+            key: json.dumps(value, default=lambda x: str(x if not isfunction(x) else x.__name__)) for key, value in train_configuration.items()
         },
         'controller': controller_results
     }] + results
@@ -291,14 +292,15 @@ if __name__ == '__main__':
         'batch_size': [64],
         'hidden_layer_size': [64],
         'num_hidden_layers': [2],
-        'target_network_update_rate': ['auto']
+        'target_network_update_rate': ['auto'],
+        'optimizing_rate': [5]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
     run_campaign({
         'num_agents': [1],
-        'mission_size': [5, 10, 15, 20, 25, 30],
+        'mission_size': [5, 20, 30, 40, 50],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -312,12 +314,13 @@ if __name__ == '__main__':
         #     'batch_size': 64,
         #     'hidden_layer_size': 64,
         #     'num_hidden_layers': 2,
-        #     'target_network_update_rate': 'auto'
+        #     'target_network_update_rate': 'auto',
+        #     'optimizing_rate': 10
         # },
         'controller_config': controller_config_permutations,
         'state': CommunicationMobilityPacketsState,
         'testing_repetitions': 5,
-        'maximum_simulation_steps': 1_000_000,
-        'live_testing_frequency': 50_000,
+        'maximum_simulation_steps': 10_000_000,
+        'live_testing_frequency': 100_000,
         'repetitions': [1, 2, 3],
     }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=1)

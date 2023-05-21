@@ -29,6 +29,7 @@ class DQLearnerParameters(TypedDict):
     memory_size: int
     batch_size: int
     target_network_update_rate: int
+    optimizing_rate: int
 
     # Network architecture
     num_hidden_layers: int

@@ -53,6 +53,7 @@ class MemoryBuffer:
     """
     This class stores recollections of the previous 'memory_size' iterations of the simulation
     """
+
     def __init__(self, configuration: SimulationConfiguration, environment: Environment):
         memory_size: int = configuration['controller_config']['memory_size']
 
@@ -153,7 +154,6 @@ class DQNLearner(Controller):
                                          amsgrad=True)
             self.criterion = nn.SmoothL1Loss()
 
-
         self.memory_buffer = MemoryBuffer(configuration, environment)
 
         # Statistical variables, only useful to generate metrics
@@ -237,12 +237,13 @@ class DQNLearner(Controller):
                 'reward': torch.tensor([reward], device=device)
             })
 
-            if len(self.memory_buffer) >= self.controller_configuration['batch_size']:
+            if len(self.memory_buffer) >= self.controller_configuration['batch_size'] \
+                    and simulation_step % self.controller_configuration['optimizing_rate'] == 0:
                 self.optimize(simulation_step)
 
-                if simulation_step % self.target_network_update_rate == 0 and simulation_step:
-                    policy_model_state_dict = self.policy_model.state_dict()
-                    self.target_model.load_state_dict(policy_model_state_dict)
+            if simulation_step % self.target_network_update_rate == 0 and simulation_step:
+                policy_model_state_dict = self.policy_model.state_dict()
+                self.target_model.load_state_dict(policy_model_state_dict)
 
             self.decay_epsilon()
 
