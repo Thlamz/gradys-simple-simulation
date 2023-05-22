@@ -300,7 +300,7 @@ if __name__ == '__main__':
 
     run_campaign({
         'num_agents': [1],
-        'mission_size': [50],
+        'mission_size': [30],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -323,4 +323,4 @@ if __name__ == '__main__':
         'maximum_simulation_steps': 10_000_000,
         'live_testing_frequency': 100_000,
         'repetitions': [1, 2, 3],
-    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'])
+    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=1)
