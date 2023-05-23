@@ -319,8 +319,8 @@ if __name__ == '__main__':
         # },
         'controller_config': controller_config_permutations,
         'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 1,
+        'testing_repetitions': 3,
         'maximum_simulation_steps': 10_000_000,
         'live_testing_frequency': 100_000,
-        'repetitions': [1, 2, 3]
-    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=1)
+        'repetitions': [1]
+    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=3)
