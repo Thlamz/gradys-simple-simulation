@@ -283,14 +283,14 @@ def run_campaign(inputs: dict,
 
 if __name__ == '__main__':
     controller_config_permutation_dict = {
-        'reward_function': [unique_packets, smooth_unique_packets],
+        'reward_function': [smooth_unique_packets],
         'epsilon_start': [1],
         'epsilon_end': [0.1],
         'learning_rate': [0.0005],
         'gamma': [0.99],
         'memory_size': [10_000],
         'batch_size': [64],
-        'hidden_layer_size': [64],
+        'hidden_layer_size': [128],
         'num_hidden_layers': [2],
         'target_network_update_rate': ['auto'],
         'optimizing_rate': [10]
@@ -300,7 +300,7 @@ if __name__ == '__main__':
 
     run_campaign({
         'num_agents': [1],
-        'mission_size': [30],
+        'mission_size': [45, 50, 60],
         'sensor_generation_probability': 0.1,
         'sensor_packet_lifecycle': math.inf,
         'controller': DQNLearner,
@@ -319,8 +319,8 @@ if __name__ == '__main__':
         # },
         'controller_config': controller_config_permutations,
         'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 5,
+        'testing_repetitions': 1,
         'maximum_simulation_steps': 10_000_000,
         'live_testing_frequency': 100_000,
-        'repetitions': [1, 2, 3],
+        'repetitions': [1, 2, 3]
     }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=1)
