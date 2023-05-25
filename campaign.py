@@ -12,11 +12,9 @@ from inspect import isfunction
 from pathlib import Path
 from queue import Full
 from time import time
-from typing import List, Tuple, Optional, Dict, TypedDict
+from typing import List, Tuple, Dict, TypedDict
 
-import numpy as np
-from tqdm import tqdm
-from tqdm.contrib.concurrent import process_map
+from tqdm.autonotebook import tqdm
 
 from DQNLearner import DQNLearner
 from Dadca import Dadca
