@@ -184,6 +184,8 @@ class CampaignManager:
                                 message: str,
                                 shared: Dict[int, CampaignSimulationStatus]) -> SimulationRunner:
         pid = os.getpid()
+
+        # Introducing a new status
         shared[pid] = {
             "routine_id": 0 if pid not in shared else shared[pid]['routine_id'] + 1,
             "step": 0,
@@ -194,12 +196,17 @@ class CampaignManager:
         for i in range(steps):
             simulation.step()
 
+            # Updating status at the campaigns update rate
             if (current_time := time()) - last_time >= CampaignManager.status_update_rate:
                 temp = shared[pid]
                 temp.update({'step': i})
                 shared[pid] = temp
                 last_time = current_time
 
+        # Finalizing status
+        temp = shared[pid]
+        temp.update({'step': steps})
+        shared[pid] = temp
         return simulation
 
     async def _run_permutation(self, argument: Tuple[int, dict], configuration: CampaignConfiguration):
@@ -306,7 +313,7 @@ class CampaignManager:
         # region Monitoring processes
 
         # Instantiating a progress bar for each process. Progress bar zero represent the main process
-        progress_bars = [tqdm(position=i + 1, bar_format='{desc:<50.50}{percentage:3.0f}%|{bar} |  {n_fmt:>8}/{total_fmt:<8}  [{elapsed:>5}<{remaining:<5} - {rate_fmt:15} {postfix:15}]') for i in range(self.max_processes + 1)]
+        progress_bars = [tqdm(position=i + 1, bar_format='{desc:<50.50}{percentage:3.0f}%|{bar}| {n_fmt:>8}/{total_fmt:<8} [{elapsed:>5}<{remaining:<5} - {rate_fmt:15} {postfix:15}]') for i in range(self.max_processes + 1)]
         progress_bars[0].set_postfix_str("Main Process")
         for i in range(self.max_processes):
             progress_bars[i + 1].set_postfix_str(f"Process {i + 1}")
