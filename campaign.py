@@ -59,7 +59,7 @@ def get_default_configuration() -> SimulationConfiguration:
         'sensor_generation_frequency': 3,
         'sensor_generation_probability': 0.6,
         'sensor_packet_lifecycle': 12,
-        'maximum_simulation_steps': 1_000_000,
+        'simulation_steps': 100_000,
         'training': True,
         'step_by_step': False,
         'plots': False,
