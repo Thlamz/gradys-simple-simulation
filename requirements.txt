@@ -70,8 +70,6 @@ pyrsistent==0.19.3
 python-dateutil==2.8.2
 python-json-logger==2.0.7
 pytz==2022.7.1
-pywin32==305
-pywinpty==2.0.10
 PyYAML==6.0
 pyzmq==25.0.1
 qtconsole==5.4.1
@@ -96,4 +94,3 @@ webencodings==0.5.1
 websocket-client==1.5.1
 widgetsnbextension==4.0.5
 tqdm~=4.65.0
-torch~=2.0.1+cu117
