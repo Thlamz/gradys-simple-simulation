@@ -10,6 +10,7 @@ import sys
 from functools import reduce
 from inspect import isfunction
 from pathlib import Path
+from queue import Full
 from time import time
 from typing import List, Tuple, Optional, Dict, TypedDict
 
@@ -172,13 +173,16 @@ class CampaignManager:
         })
         for i in range(steps):
             simulation.step()
-            queue.put({
-                "process": os.getpid(),
-                "reset": False,
-                "step": i,
-                "total": steps,
-                "description": message
-            })
+            try:
+                queue.put_nowait({
+                    "process": os.getpid(),
+                    "reset": False,
+                    "step": i,
+                    "total": steps,
+                    "description": message
+                })
+            except Full:
+                continue
         return simulation
 
     async def _run_permutation(self, argument: Tuple[int, dict], configuration: CampaignConfiguration):
