@@ -7,7 +7,7 @@ from pathlib import Path
 
 from DQNLearner import DQNLearner
 from campaign import CampaignManager
-from rewards import smooth_unique_packets
+from rewards import smooth_unique_packets, unique_packets
 from state import CommunicationMobilityPacketsState
 
 if __name__ == '__main__':
@@ -27,7 +27,7 @@ if __name__ == '__main__':
         'gamma': [0.99],
         'memory_size': [10_000],
         'batch_size': [64],
-        'hidden_layer_size': [128],
+        'hidden_layer_size': [64, 256, 1024],
         'num_hidden_layers': [2],
         'target_network_update_rate': ['auto'],
         'optimizing_rate': [10]
