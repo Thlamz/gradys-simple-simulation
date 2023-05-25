@@ -51,13 +51,10 @@ class SimulationConfiguration(TypedDict):
     sensor_generation_probability: float
     sensor_packet_lifecycle: Optional[int]
 
-    # Simulation parameters
-    maximum_simulation_steps: int
-    live_testing_frequency: Optional[int]
-    target_total_training_steps: Optional[int]
+    # Execution parameters
+    simulation_steps: int
     training: bool
     step_by_step: bool
-    testing_repetitions: int
     plots: bool
     verbose: bool
 
@@ -66,5 +63,4 @@ class SimulationResults(TypedDict):
     max_possible_throughput: float
     expected_throughput: float
     avg_throughput: float
-    config: SimulationConfiguration
     controller: dict

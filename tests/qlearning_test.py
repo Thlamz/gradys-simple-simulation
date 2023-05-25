@@ -4,7 +4,7 @@ from pathlib import Path
 from QLearning import SparseQTable
 from control import Control, MobilityCommand
 from environment import Environment
-from main import get_default_configuration
+from campaign import get_default_configuration
 from state_test import MobilityState
 
 

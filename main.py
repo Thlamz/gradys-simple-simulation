@@ -1,287 +1,24 @@
+import argparse
+import asyncio
 import itertools
-import json
 import math
 import multiprocessing
-import os
-import random
-from functools import reduce
-from inspect import isfunction
 from pathlib import Path
-from typing import List, Tuple, Optional
-
-import numpy as np
-from tqdm import tqdm
-from tqdm.contrib.concurrent import process_map
 
 from DQNLearner import DQNLearner
-from Dadca import Dadca
-from QLearning import QLearning, SparseQTable
-from rewards import throughput_reward, delivery_reward, movement_reward, delivery_packets_reward, delivery_and_pickup, \
-    unique_packets, smooth_unique_packets
-from simulation import Simulation
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-from simulation_configuration import SimulationConfiguration, SimulationResults
-from state import MobilityState, SignedMobilityState, CommunicationMobilityState, \
-    CommunicationMobilityPacketsState
-
-
-def get_default_configuration() -> SimulationConfiguration:
-    """
-    Returns a default configuration with sensible values
-    """
-    return {
-        'controller': QLearning,
-        'controller_config': {
-            'epsilon_start': 1.,
-            'epsilon_end': 0.001,
-            'learning_rate': 0.1,
-            'gamma': 0.99,
-            'reward_function': unique_packets,
-            'qtable_initialization_value': 0,
-            'qtable_format': SparseQTable,
-        },
-        'model_file': None,
-        'state': MobilityState,
-        'mission_size': 20,
-        'num_agents': 2,
-        'sensor_generation_frequency': 3,
-        'sensor_generation_probability': 0.6,
-        'sensor_packet_lifecycle': 12,
-        'maximum_simulation_steps': 1_000_000,
-        'training': True,
-        'testing_repetitions': 1,
-        'step_by_step': False,
-        'plots': False,
-        'verbose': True
-    }
-
-
-def run_simulation(train_configuration: SimulationConfiguration,
-                   test_configuration: Optional[SimulationConfiguration] = None) -> List[SimulationResults]:
-    """
-    Runs a single simulation with a specified configuration. This function's main objective is to run the simulation
-    steps and record telemetry about them.
-    :param train_configuration: Configuration to run the simulation with
-    :return: A summary of the simulation's results
-    """
-    simulation = Simulation(train_configuration)
-
-    throughputs = []
-    throughput_sum = 0
-    agent_positions = {index: [] for index in range(train_configuration['num_agents'])}
-
-    max_possible_throughput = (train_configuration['mission_size'] - 1) * (1 / train_configuration['sensor_generation_frequency'])
-    expected_throughput = ((train_configuration['mission_size'] - 1)
-                           * (1 / train_configuration['sensor_generation_frequency'])
-                           * train_configuration['sensor_generation_probability'])
-    if train_configuration['verbose']:
-        print(f"Maximum possible throughput {max_possible_throughput}")
-        print(f"Expected throughput {expected_throughput}")
-
-    iterator = range(train_configuration['maximum_simulation_steps'])
-    if not train_configuration['step_by_step'] and train_configuration['verbose']:
-        iterator = tqdm(iterator)
-
-    # Checking if live testing is enabled
-    should_live_test = train_configuration.get('live_testing_frequency') is not None and test_configuration is not None
-
-    results: List[SimulationResults] = []
-
-    # Simulation iterations
-    for _ in iterator:
-        # Step by step visualization of simulation state
-        if train_configuration['step_by_step']:
-            print("---------------------")
-            print(f"Ground Station: {simulation.environment.ground_station.packets}")
-            print(
-                f"Sensors: [{', '.join(str(sensor.count_update_packets(simulation.simulation_step, train_configuration['sensor_packet_lifecycle'])) for sensor in simulation.environment.sensors)}]")
-            agent_string = ""
-            for i in range(train_configuration['mission_size']):
-                agent_string += "-("
-                agent_string += ", ".join(f"{index}[{agent.packets}]"
-                                          for index, agent in enumerate(simulation.environment.agents) if
-                                          agent.position == i)
-                agent_string += ")-"
-            print(f"Agents: [{agent_string}]")
-
-            input()
-
-        simulation.simulate()
-
-        # Calculating simulation step statistics
-        throughput_sum += simulation.environment.ground_station.packets / simulation.simulation_step
-        if train_configuration['plots']:
-            for index, agent in enumerate(simulation.environment.agents):
-                agent_positions[index].append(agent.position)
-
-            throughputs.append(simulation.environment.ground_station.packets / simulation.simulation_step)
-
-        # Executing live testing if required
-        # A live test is a short test executed during training to evaluate the progress of the learning process
-        if should_live_test and simulation.simulation_step % train_configuration['live_testing_frequency'] == 0:
-            if train_configuration['verbose']:
-                print("\n\n-------------------------------------------------------------------------\n")
-                print(f"Executing live test at step {simulation.simulation_step}\n")
-
-            # Calling finalize function so the controller serializes and persists the learned results
-            simulation.controller.finalize()
-
-            for i in range(train_configuration['testing_repetitions']):
-                if train_configuration['verbose']:
-                    print(f"Running live test repetition {i+1}\n\n")
-                # Recursively running a test simulation and saving results
-                live_test_result = run_simulation(test_configuration)[0]
-
-                # Filling simulation step where live test was performed
-                live_test_result['config']['maximum_simulation_steps'] = str(simulation.simulation_step)
-
-                results.append(live_test_result)
-            if train_configuration['verbose']:
-                print("\n-------------------------------------------------------------------------\n\n")
-
-    # Gathering training results
-    controller_results = simulation.controller.finalize()
-
-    if train_configuration['plots']:
-        sns.lineplot(data=throughputs).set(title='Throughput')
-        plt.show()
-
-        plt.figure(figsize=(80, 8))
-        sns.lineplot(data=agent_positions)
-        sns.lineplot().set(title='Agent Positions', ylim=(0, train_configuration['mission_size'] - 1))
-        plt.show()
-
-    if train_configuration['verbose']:
-        print(f"\nSimulation steps: {simulation.simulation_step}")
-        print(f"Average throughput: {throughput_sum / simulation.simulation_step}")
-        print(f"Last throughput: {simulation.environment.ground_station.packets / simulation.simulation_step}")
-    return [{
-        'max_possible_throughput': max_possible_throughput,
-        'expected_throughput': expected_throughput,
-        'avg_throughput': throughput_sum / simulation.simulation_step,
-        'config': {
-            key: json.dumps(value, default=lambda x: str(x if not isfunction(x) else x.__name__)) for key, value in train_configuration.items()
-        },
-        'controller': controller_results
-    }] + results
-
-
-def _run_permutation(argument: Tuple[int, dict]) -> List[SimulationResults]:
-    """
-    Runs a permutation of configuration parameters. This auxiliary function is used
-    to run simulation campaigns
-    :param argument: Specific permutation being run in this call
-    :return: List of simulation results generated by this permutation. This is a list because
-    both training and testing are recorded for QLearning
-    """
-    index, permutation = argument
-
-    q_table_path = Path(f"./{index}.json")
-    config = {
-        **get_default_configuration(),
-        **permutation,
-        'model_file': q_table_path
-    }
-
-    test_config = config.copy()
-    test_config['training'] = False
-    test_config['maximum_simulation_steps'] = 10000
-
-    training_time = 0
-    results = []
-    while training_time < config.get('target_total_training_steps', 1):
-        results.extend(run_simulation(config, test_config))
-        training_time += config['maximum_simulation_steps']
-
-    if config['controller'] != Dadca:
-        for _ in range(config['testing_repetitions']):
-            test_results = run_simulation(test_config)[0]
-
-            # Making sure the steps reported are related to the training not testing
-            test_results['config']['maximum_simulation_steps'] = str(config['maximum_simulation_steps'])
-            results.append(test_results)
-        os.unlink(q_table_path)
-
-    return results
-
-
-def run_campaign(inputs: dict,
-                 variable_keys: List[str],
-                 multi_processing: bool = False,
-                 max_processes: int = None,
-                 results_file: Path = Path("./analysis/results.json")):
-    """
-    Runs a simulation campaign. A campaign is composed by the product of all value variations of the variable keys.
-    Simulation results are recorded in a results.json file in the analysis folder.
-    :param inputs: This is a dictionary specifying keys in the simulation configuration. Keys that are not in
-    "variable_keys" will be used in all permutations. Keys that are in "variable_keys" must be lists
-    :param variable_keys: Denotes that a key in the inputs dictionary is variable
-    :param multi_processing: Enable multiprocessing
-    :param max_processes: Maximum number of processes to use
-    :param results_file: File where the simulation results will be saved
-    """
-    # List of mutable campaign variables, making sure to shuffle values so the product is randomly ordered
-    value_ranges = [(key, random.sample(inputs[key], len(inputs[key]))) for key in variable_keys]
-    permutations = itertools.product(*[value_range[1] for value_range in value_ranges])
-
-    fixed_values = {
-        key: value for key, value in inputs.items() if key not in variable_keys
-    }
-
-    if multi_processing:
-        fixed_values['verbose'] = False
-
-    num_permutations = reduce(lambda a, b: a * b, (len(value) for _key, value in value_ranges))
-    print(f"Running {num_permutations} total permutations \n\n")
-
-    mapped_permutations = list(
-        map(lambda p: {**fixed_values, **{value_ranges[index][0]: value for index, value in enumerate(p)}},
-            permutations))
-
-    if multi_processing:
-        small_permutations = [permutation
-                              for permutation in mapped_permutations
-                              if permutation['maximum_simulation_steps'] <= 1_000_000 or permutation['controller'] != QLearning]
-        print(f"Running {len(small_permutations)} smaller simulations in parallel\n")
-        small_results = list(process_map(_run_permutation,
-                                         enumerate(small_permutations),
-                                         max_workers=min(max_processes or 8, 8),
-                                         total=len(small_permutations)))
-
-        medium_permutations = [permutation
-                               for permutation in mapped_permutations
-                               if 1_000_000 < permutation['maximum_simulation_steps'] <= 5_000_000
-                               and permutation not in small_permutations]
-        print(f"\nRunning {len(medium_permutations)} medium simulations in 3 worker parallel\n")
-        medium_results = list(process_map(_run_permutation,
-                                          enumerate(medium_permutations),
-                                          max_workers=min(max_processes or 3, 3),
-                                          total=len(medium_permutations)))
-
-        large_permutations = [permutation
-                              for permutation in mapped_permutations
-                              if permutation['maximum_simulation_steps'] > 5_000_000
-                              and permutation not in medium_permutations]
-        print(f"\nRunning {len(large_permutations)} larger simulations synchronously\n")
-        big_results = list(tqdm(map(_run_permutation, enumerate(large_permutations)), total=len(large_permutations)))
-
-        results = list(itertools.chain(small_results, medium_results, big_results))
-    else:
-        results = list(itertools.chain(map(_run_permutation, enumerate(mapped_permutations))))
-
-    campaign = {
-        'campaign_variables': variable_keys + ['training'],
-        'results': list(itertools.chain(*results))
-    }
-
-    with open(results_file, "w") as file:
-        file.write(json.dumps(campaign, default=lambda x: None))
-
+from campaign import CampaignManager
+from rewards import smooth_unique_packets
+from state import CommunicationMobilityPacketsState
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+                        prog='Gradys Simple Simulation')
+    parser.add_argument('--max_processes', required=False, default=multiprocessing.cpu_count(), type=int)
+
+    args = parser.parse_args()
+
+    campaign_manager = CampaignManager(max_processes=args.max_processes)
+
     controller_config_permutation_dict = {
         'reward_function': [smooth_unique_packets],
         'epsilon_start': [1],
@@ -298,29 +35,36 @@ if __name__ == '__main__':
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
 
-    run_campaign({
-        'num_agents': [1],
-        'mission_size': [45, 50, 60],
-        'sensor_generation_probability': 0.1,
-        'sensor_packet_lifecycle': math.inf,
-        'controller': DQNLearner,
-        # 'controller_config': {
-        #     'reward_function': unique_packets,
-        #     'epsilon_start': 1,
-        #     'epsilon_end': 0.1,
-        #     'learning_rate': 0.0005,
-        #     'gamma': 0.99,
-        #     'memory_size': 10_000,
-        #     'batch_size': 64,
-        #     'hidden_layer_size': 64,
-        #     'num_hidden_layers': 2,
-        #     'target_network_update_rate': 'auto',
-        #     'optimizing_rate': 10
-        # },
-        'controller_config': controller_config_permutations,
-        'state': CommunicationMobilityPacketsState,
-        'testing_repetitions': 3,
-        'maximum_simulation_steps': 10_000_000,
-        'live_testing_frequency': 100_000,
-        'repetitions': [1]
-    }, ['repetitions', 'num_agents', 'mission_size', 'controller_config'], multi_processing=True, max_processes=3)
+    asyncio.run(campaign_manager.run_campaign(
+        {
+            'num_agents': 1,
+            'mission_size': [45, 50, 60],
+            'sensor_generation_probability': 0.1,
+            'sensor_packet_lifecycle': math.inf,
+            'controller': DQNLearner,
+            # 'controller_config': {
+            #     'reward_function': unique_packets,
+            #     'epsilon_start': 1,
+            #     'epsilon_end': 0.1,
+            #     'learning_rate': 0.0005,
+            #     'gamma': 0.99,
+            #     'memory_size': 10_000,
+            #     'batch_size': 64,
+            #     'hidden_layer_size': 64,
+            #     'num_hidden_layers': 2,
+            #     'target_network_update_rate': 'auto',
+            #     'optimizing_rate': 10
+            # },
+            'controller_config': controller_config_permutations,
+            'state': CommunicationMobilityPacketsState,
+            'repetitions': [1, 2]
+        },
+        ['repetitions', 'mission_size', 'controller_config'],
+        {
+            'training_steps': 10_000_000,
+            'testing_steps': 10_000,
+            'live_testing_frequency': 100_000,
+            'testing_repetitions': 3
+        }
+    ))
+    campaign_manager.finalize(Path("analysis/results.json"))
