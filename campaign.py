@@ -38,7 +38,7 @@ def get_default_configuration() -> SimulationConfiguration:
     Returns a default configuration with sensible values
     """
     return {
-        'controller': QLearning,
+        'controller': DQNLearner,
         'controller_config': {
             'epsilon_start': 1.,
             'epsilon_end': 0.001,
@@ -57,7 +57,6 @@ def get_default_configuration() -> SimulationConfiguration:
         'sensor_packet_lifecycle': 12,
         'maximum_simulation_steps': 1_000_000,
         'training': True,
-        'testing_repetitions': 1,
         'step_by_step': False,
         'plots': False,
         'verbose': True

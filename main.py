@@ -6,7 +6,7 @@ import multiprocessing
 from pathlib import Path
 
 from DQNLearner import DQNLearner
-from campaign import CampaignManager
+from campaign import CampaignManager, SimulationRunner, get_default_configuration
 from rewards import smooth_unique_packets
 from state import CommunicationMobilityPacketsState
 
@@ -34,37 +34,42 @@ if __name__ == '__main__':
     }
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
-
-    asyncio.run(campaign_manager.run_campaign(
-        {
-            'num_agents': 1,
-            'mission_size': [45, 50, 60],
-            'sensor_generation_probability': 0.1,
-            'sensor_packet_lifecycle': math.inf,
-            'controller': DQNLearner,
-            # 'controller_config': {
-            #     'reward_function': unique_packets,
-            #     'epsilon_start': 1,
-            #     'epsilon_end': 0.1,
-            #     'learning_rate': 0.0005,
-            #     'gamma': 0.99,
-            #     'memory_size': 10_000,
-            #     'batch_size': 64,
-            #     'hidden_layer_size': 64,
-            #     'num_hidden_layers': 2,
-            #     'target_network_update_rate': 'auto',
-            #     'optimizing_rate': 10
-            # },
-            'controller_config': controller_config_permutations,
-            'state': CommunicationMobilityPacketsState,
-            'repetitions': [1, 2]
-        },
-        ['repetitions', 'mission_size', 'controller_config'],
-        {
-            'training_steps': 10_000_000,
-            'testing_steps': 10_000,
-            'live_testing_frequency': 100_000,
-            'testing_repetitions': 3
-        }
-    ))
-    campaign_manager.finalize(Path("analysis/results.json"))
+    #
+    # asyncio.run(campaign_manager.run_campaign(
+    #     {
+    #         'num_agents': 1,
+    #         'mission_size': [45, 50, 60],
+    #         'sensor_generation_probability': 0.1,
+    #         'sensor_packet_lifecycle': math.inf,
+    #         'controller': DQNLearner,
+    #         # 'controller_config': {
+    #         #     'reward_function': unique_packets,
+    #         #     'epsilon_start': 1,
+    #         #     'epsilon_end': 0.1,
+    #         #     'learning_rate': 0.0005,
+    #         #     'gamma': 0.99,
+    #         #     'memory_size': 10_000,
+    #         #     'batch_size': 64,
+    #         #     'hidden_layer_size': 64,
+    #         #     'num_hidden_layers': 2,
+    #         #     'target_network_update_rate': 'auto',
+    #         #     'optimizing_rate': 10
+    #         # },
+    #         'controller_config': controller_config_permutations,
+    #         'state': CommunicationMobilityPacketsState,
+    #         'repetitions': [1, 2]
+    #     },
+    #     ['repetitions', 'mission_size', 'controller_config'],
+    #     {
+    #         'training_steps': 10_000_000,
+    #         'testing_steps': 10_000,
+    #         'live_testing_frequency': 100_000,
+    #         'testing_repetitions': 3
+    #     }
+    # ))
+    # campaign_manager.finalize(Path("analysis/results.json"))
+    simulation = SimulationRunner(
+        get_default_configuration()
+    )
+    for _ in range(10_000):
+        simulation.step()
