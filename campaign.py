@@ -40,13 +40,17 @@ def get_default_configuration() -> SimulationConfiguration:
     return {
         'controller': DQNLearner,
         'controller_config': {
-            'epsilon_start': 1.,
-            'epsilon_end': 0.001,
-            'learning_rate': 0.1,
+            'reward_function': smooth_unique_packets,
+            'epsilon_start': 1,
+            'epsilon_end': 0.1,
+            'learning_rate': 0.0005,
             'gamma': 0.99,
-            'reward_function': unique_packets,
-            'qtable_initialization_value': 0,
-            'qtable_format': SparseQTable,
+            'memory_size': 10_000,
+            'batch_size': 64,
+            'hidden_layer_size': 128,
+            'num_hidden_layers': 2,
+            'target_network_update_rate': 'auto',
+            'optimizing_rate': 10
         },
         'model_file': None,
         'state': MobilityState,
