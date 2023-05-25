@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import random
 import sys
+from concurrent.futures import Executor
 from functools import reduce
 from inspect import isfunction
 from pathlib import Path
@@ -141,13 +142,30 @@ class SimulationRunner:
 
 class CampaignManager:
     results: List[CampaignResults]
+    """ List of results from simulations triggered by running campaigns """
 
-    class CampaignSimulationMessage(TypedDict):
-        process: int
-        reset: bool
+    process_pool: Executor
+    """ Process pool responsible for executing tasks triggered during campaings """
+
+    max_processes: int
+    """ Maximum number of processes in the process pool """
+
+    process_ids: List[int]
+    """ Ids of known worker processes from the pool """
+
+    process_manager: multiprocessing.Manager
+    """ Class responsible for managing shared memory between processes """
+
+    class CampaignSimulationStatus(TypedDict):
+        routine_id: int
         step: int
         total: int
         description: str
+
+    shared_dict: Dict[int, CampaignSimulationStatus]
+    """ Dictionary containing the status of each working process in the pool """
+
+    status_update_rate: int = 1
 
     def __init__(self, max_processes: int = 1):
         self.results = []
@@ -155,32 +173,30 @@ class CampaignManager:
         self.max_processes = max_processes
         self.process_ids = []
         self.process_manager = multiprocessing.Manager()
-        self.message_queue = self.process_manager.Queue()
+        self.shared_dict = self.process_manager.dict()
 
     @staticmethod
     def _run_partial_simulation(simulation: SimulationRunner,
                                 steps: int,
                                 message: str,
-                                queue: multiprocessing.Queue) -> SimulationRunner:
-        queue.put({
-            "process": os.getpid(),
-            "reset": True,
+                                shared: Dict[int, CampaignSimulationStatus]) -> SimulationRunner:
+        pid = os.getpid()
+        shared[pid] = {
+            "routine_id": 0 if pid not in shared else shared[pid]['routine_id'] + 1,
             "step": 0,
             "total": steps,
             "description": message
-        })
+        }
+        last_time = time()
         for i in range(steps):
             simulation.step()
-            try:
-                queue.put_nowait({
-                    "process": os.getpid(),
-                    "reset": False,
-                    "step": i,
-                    "total": steps,
-                    "description": message
-                })
-            except Full:
-                continue
+
+            if (current_time := time()) - last_time >= CampaignManager.status_update_rate:
+                temp = shared[pid]
+                temp.update({'step': i})
+                shared[pid] = temp
+                last_time = current_time
+
         return simulation
 
     async def _run_permutation(self, argument: Tuple[int, dict], configuration: CampaignConfiguration):
@@ -212,7 +228,7 @@ class CampaignManager:
                                               training_simulation,
                                               num_steps,
                                               f'Permutation {index} - Training ({steps}-{steps + num_steps}/{configuration["training_steps"]})',
-                                              self.message_queue)
+                                              self.shared_dict)
             training_simulation = await asyncio.wrap_future(future)
             steps += num_steps
 
@@ -226,7 +242,7 @@ class CampaignManager:
                                                   testing_simulation,
                                                   configuration['testing_steps'],
                                                   f'Permutation {index} - Testing ({steps}/{configuration["training_steps"]})',
-                                                  self.message_queue)
+                                                  self.shared_dict)
                 test_futures.append(asyncio.wrap_future(future))
 
             testing_simulations = await asyncio.gather(*test_futures)
@@ -296,6 +312,10 @@ class CampaignManager:
         progress_bars[0].total = num_permutations
         progress_bars[0].set_description("Total campaign progress")
 
+        # Tracks the last routine being executed for each process
+        # Used to reset the tqdm progress bar when a new routine is started
+        last_routine_ids: Dict[int, int] = {}
+
         # Looping while not all permutations are done
         while any(not future.done() for future in permutation_futures):
             # Stopping campaign early if any exception is raised
@@ -308,21 +328,24 @@ class CampaignManager:
             progress_bars[0].refresh()
 
             # Checking message queue for updates from the processes
-            while not self.message_queue.empty():
-                message: CampaignManager.CampaignSimulationMessage = self.message_queue.get()
-                if message['process'] not in self.process_ids:
-                    self.process_ids.append(message['process'])
-                bar_index = self.process_ids.index(message['process']) + 1
+            for process, status in self.shared_dict.items():
+                if process not in self.process_ids:
+                    self.process_ids.append(process)
 
-                # Resetting progress bar when step doesn't progress
-                if message['reset']:
+                bar_index = self.process_ids.index(process) + 1
+
+                # Resetting progress bar when a new routine is started
+                if process not in last_routine_ids or status['routine_id'] != last_routine_ids[process]:
                     progress_bars[bar_index].start_t = time()
-                    progress_bars[bar_index].total = message['total']
+                    progress_bars[bar_index].total = status['total']
+                    progress_bars[bar_index].set_description(status['description'])
 
-                progress_bars[bar_index].n = message['step']
-                progress_bars[bar_index].set_description(message['description'])
+                    last_routine_ids[process] = status['routine_id']
 
-            await asyncio.sleep(1)
+                progress_bars[bar_index].n = status['step']
+                progress_bars[bar_index].refresh()
+
+            await asyncio.sleep(CampaignManager.status_update_rate)
         progress_bars[0].n = sum(1 for future in permutation_futures if future.done())
         progress_bars[0].refresh()
         # endregion
