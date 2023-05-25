@@ -306,7 +306,7 @@ class CampaignManager:
         # region Monitoring processes
 
         # Instantiating a progress bar for each process. Progress bar zero represent the main process
-        progress_bars = [tqdm(position=i + 1, bar_format='{l_bar}{bar:15}{r_bar}{bar:-10b}') for i in range(self.max_processes + 1)]
+        progress_bars = [tqdm(position=i + 1, bar_format='{desc:<50.50}{percentage:3.0f}%|{bar} |  {n_fmt:>8}/{total_fmt:<8}  [{elapsed:>5}<{remaining:<5} - {rate_fmt:15} {postfix:15}]') for i in range(self.max_processes + 1)]
         progress_bars[0].set_postfix_str("Main Process")
         for i in range(self.max_processes):
             progress_bars[i + 1].set_postfix_str(f"Process {i + 1}")
