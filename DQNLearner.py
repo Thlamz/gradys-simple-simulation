@@ -143,7 +143,7 @@ class DQNLearner(Controller):
 
             # Update rate of the target network
             if self.controller_configuration['target_network_update_rate'] == 'auto':
-                self.target_network_update_rate = self.configuration['maximum_simulation_steps'] // 100
+                self.target_network_update_rate = self.configuration['simulation_steps'] // 100
             else:
                 self.target_network_update_rate = self.controller_configuration['target_network_update_rate']
         # endregion
@@ -165,7 +165,7 @@ class DQNLearner(Controller):
         self.epsilon = self.controller_configuration['epsilon_start']
         self.epsilon_start = self.controller_configuration['epsilon_start']
         self.epsilon_end = self.controller_configuration['epsilon_end']
-        self.epsilon_horizon = self.configuration['maximum_simulation_steps']
+        self.epsilon_horizon = self.configuration['simulation_steps']
         self.epsilons = []
 
         # Control variables. These store the last state and control visited in the simulation
@@ -274,5 +274,5 @@ class DQNLearner(Controller):
                 sns.lineplot(data=self.losses).set(title="Loss")
                 plt.show()
         return {
-            'avg_reward': self.total_reward / self.configuration['maximum_simulation_steps']
+            'avg_reward': self.total_reward / self.configuration['simulation_steps']
         }

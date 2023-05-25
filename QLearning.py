@@ -175,7 +175,7 @@ class QLearning(Controller):
 
         self.epsilon_start = self.controller_configuration['epsilon_start']
         self.epsilon_end = self.controller_configuration['epsilon_end']
-        self.epsilon_horizon = self.configuration['maximum_simulation_steps']
+        self.epsilon_horizon = self.configuration['simulation_steps']
         self.learning_rate = self.controller_configuration['learning_rate']
         self.gamma = self.controller_configuration['gamma']
         self.qtable_initialization_value = self.controller_configuration['qtable_initialization_value']
@@ -231,5 +231,5 @@ class QLearning(Controller):
         if self.training:
             self.q_table.export_qtable()
         return {
-            'avg_reward': self.total_reward / self.configuration['maximum_simulation_steps']
+            'avg_reward': self.total_reward / self.configuration['simulation_steps']
         }
