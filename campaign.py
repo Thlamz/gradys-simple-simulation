@@ -147,6 +147,8 @@ class CampaignManager:
     results: List[CampaignResults]
     """ List of results from simulations triggered by running campaigns """
 
+    result_file: Path
+
     process_pool: Executor
     """ Process pool responsible for executing tasks triggered during campaings """
 
@@ -170,13 +172,14 @@ class CampaignManager:
 
     status_update_rate: int = 1
 
-    def __init__(self, max_processes: int = 1):
+    def __init__(self, file: Path, max_processes: int = 1):
         self.results = []
         self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=max_processes)
         self.max_processes = max_processes
         self.process_ids = []
         self.process_manager = multiprocessing.Manager()
         self.shared_dict = self.process_manager.dict()
+        self.result_file = file
 
     @staticmethod
     def _run_partial_simulation(simulation: SimulationRunner,
@@ -271,6 +274,7 @@ class CampaignManager:
             'simulation_results': training_results,
             'completed_training_steps': configuration['training_steps']
         })
+        self._persist_results()
 
     async def run_campaign(self,
                            inputs: dict,
@@ -360,9 +364,12 @@ class CampaignManager:
         progress_bars[0].refresh()
         # endregion
 
-    def finalize(self, file: Path):
-        with file.open("w") as file:
+    def _persist_results(self):
+        with self.result_file.open("w") as file:
             file.write(json.dumps(self.results, default=lambda x: str(x) if not isfunction(x) else x.__name__))
+
+    def finalize(self):
+        self._persist_results()
 
         self.process_pool.shutdown()
         self.process_manager.shutdown()
