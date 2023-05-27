@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    campaign_manager = CampaignManager(max_processes=args.max_processes)
+    campaign_manager = CampaignManager(Path("analysis/results.json"), max_processes=args.max_processes)
 
     controller_config_permutation_dict = {
         'reward_function': [smooth_unique_packets],
@@ -27,10 +27,10 @@ if __name__ == '__main__':
         'gamma': [0.99],
         'memory_size': [10_000],
         'batch_size': [64],
-        'hidden_layer_size': [64, 128, 256],
+        'hidden_layer_size': [256],
         'num_hidden_layers': [2],
         'target_network_update_rate': ['auto'],
-        'optimizing_rate': [10]
+        'optimizing_rate': [1, 5, 10]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
@@ -67,4 +67,4 @@ if __name__ == '__main__':
             'testing_repetitions': 3
         }
     ))
-    campaign_manager.finalize(Path("analysis/results.json"))
+    campaign_manager.finalize()
