@@ -27,10 +27,10 @@ if __name__ == '__main__':
         'gamma': [0.99],
         'memory_size': [10_000],
         'batch_size': [64],
-        'hidden_layer_size': [256],
+        'hidden_layer_size': [128],
         'num_hidden_layers': [2],
         'target_network_update_rate': ['auto'],
-        'optimizing_rate': [1, 5, 10]
+        'optimizing_rate': [10]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
     controller_config_permutations = [dict(zip(keys, v)) for v in itertools.product(*values)]
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     asyncio.run(campaign_manager.run_campaign(
         {
             'num_agents': 1,
-            'mission_size': [60],
+            'mission_size': [10, 20, 30, 40, 50, 60],
             'sensor_generation_probability': 0.1,
             'sensor_packet_lifecycle': math.inf,
             'controller': DQNLearner,
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         {
             'training_steps': 10_000_000,
             'testing_steps': 10_000,
-            'live_testing_frequency': 100_000,
+            'live_testing_frequency': 1_000_000,
             'testing_repetitions': 3
         }
     ))
