@@ -27,7 +27,7 @@ if __name__ == '__main__':
         'gamma': [0.99],
         'memory_size': [10_000],
         'batch_size': [64],
-        'hidden_layer_size': [256],
+        'hidden_layer_size': [128],
         'num_hidden_layers': [2],
         'target_network_update_rate': ['auto'],
         'optimizing_rate': [1]
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     asyncio.run(campaign_manager.run_campaign(
         {
             'num_agents': 1,
-            'mission_size': [30],
+            'mission_size': [30, 35, 45, 50, 55, 60],
             'sensor_generation_probability': 0.1,
             'sensor_packet_lifecycle': math.inf,
             'controller': DQNLearner,
@@ -61,9 +61,9 @@ if __name__ == '__main__':
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
-            'training_steps': 10_000_000,
+            'training_steps': 1_000_000,
             'testing_steps': 10_000,
-            'live_testing_frequency': 1_000_000,
+            'live_testing_frequency': 100_000,
             'testing_repetitions': 3
         }
     ))
