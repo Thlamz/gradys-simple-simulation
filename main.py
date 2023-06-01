@@ -38,7 +38,7 @@ if __name__ == '__main__':
     asyncio.run(campaign_manager.run_campaign(
         {
             'num_agents': 1,
-            'mission_size': [30, 35, 45, 50, 55, 60],
+            'mission_size': [30],
             'sensor_generation_probability': 0.1,
             'sensor_packet_lifecycle': math.inf,
             'controller': DQNLearner,
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             # },
             'controller_config': controller_config_permutations,
             'state': CommunicationMobilityPacketsState,
-            'repetitions': [1]
+            'repetitions': [1, 2]
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
