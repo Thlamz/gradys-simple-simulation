@@ -57,7 +57,7 @@ if __name__ == '__main__':
             # },
             'controller_config': controller_config_permutations,
             'state': CommunicationMobilityPacketsState,
-            'repetitions': [1, 2]
+            'repetitions': [1, 2, 3, 4, 5, 6]
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
