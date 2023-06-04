@@ -178,8 +178,7 @@ class DQNLearner(Controller):
         else:
             self.epsilon *= (self.epsilon_end / self.epsilon_start) ** (1 / self.epsilon_horizon)
 
-        if self.configuration['plots']:
-            self.epsilons.append(self.epsilon)
+        self.epsilons.append(self.epsilon)
 
     def compute_reward(self, simulation_step):
         return self.controller_configuration['reward_function'](self, simulation_step)
@@ -216,7 +215,7 @@ class DQNLearner(Controller):
         # Optimize the model to minimize this loss
         self.optimizer.zero_grad()
         loss.backward()
-        if self.configuration['plots']:
+        if self.configuration['training']:
             self.losses.append(loss.item())
         # In-place gradient clipping
         torch.nn.utils.clip_grad_value_(self.policy_model.parameters(), 100)
@@ -225,7 +224,7 @@ class DQNLearner(Controller):
     def get_control(self, simulation_step: int, current_state: State, current_control: Control) -> Control:
         reward = self.compute_reward(simulation_step)
         self.total_reward += reward
-        if self.configuration['plots'] and simulation_step > 0:
+        if simulation_step > 0:
             self.cum_avg_rewards.append(self.total_reward / simulation_step)
 
         if self.training and self.last_state is not None:
@@ -273,6 +272,18 @@ class DQNLearner(Controller):
             if self.training:
                 sns.lineplot(data=self.losses).set(title="Loss")
                 plt.show()
+
+        bins = np.linspace(0, self.configuration['simulation_steps'], 1000)
+        cum_avg_rewards_binned = [sum(self.cum_avg_rewards[int(start):int(end)]) / (end - start)
+                                  for start, end in zip(bins, bins[1:])]
+        losses_binned = [sum(self.losses[int(start):int(end)]) / (end - start)
+                         for start, end in zip(bins, bins[1:])]
+        epsilons_binned = [sum(self.epsilons[int(start):int(end)]) / (end - start)
+                           for start, end in zip(bins, bins[1:])]
         return {
-            'avg_reward': self.total_reward / self.configuration['simulation_steps']
+            'avg_reward': self.total_reward / self.configuration['simulation_steps'],
+            'cum_avg_rewards': cum_avg_rewards_binned,
+            'losses': losses_binned,
+            'epsilons': epsilons_binned,
+            'step_bins': bins[:-1].tolist()
         }
