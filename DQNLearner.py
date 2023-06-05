@@ -159,7 +159,9 @@ class DQNLearner(Controller):
         # Statistical variables, only useful to generate metrics
         self.total_reward = 0
         self.cum_avg_rewards = []
+        self.cum_avg_rewards_buffer = []
         self.losses = []
+        self.losses_buffer = []
 
         # Variables that control the epsilon greedy approach
         self.epsilon = self.controller_configuration['epsilon_start']
@@ -167,10 +169,19 @@ class DQNLearner(Controller):
         self.epsilon_end = self.controller_configuration['epsilon_end']
         self.epsilon_horizon = self.configuration['simulation_steps']
         self.epsilons = []
+        self.epsilons_buffer = []
+
+        self.statistics_bin_size = self.configuration['simulation_steps'] // 1000
 
         # Control variables. These store the last state and control visited in the simulation
         self.last_state: Optional[State] = None
         self.last_control: Optional[Control] = None
+
+    def compute_statistics(self, value, buffer: List, statistic: List):
+        buffer.append(value)
+        if len(buffer) >= self.statistics_bin_size:
+            statistic.append(sum(buffer) / len(buffer))
+            buffer.clear()
 
     def decay_epsilon(self) -> None:
         if self.epsilon <= self.epsilon_end:
@@ -178,7 +189,7 @@ class DQNLearner(Controller):
         else:
             self.epsilon *= (self.epsilon_end / self.epsilon_start) ** (1 / self.epsilon_horizon)
 
-        self.epsilons.append(self.epsilon)
+        self.compute_statistics(self.epsilon, self.epsilons_buffer, self.epsilons)
 
     def compute_reward(self, simulation_step):
         return self.controller_configuration['reward_function'](self, simulation_step)
@@ -215,8 +226,9 @@ class DQNLearner(Controller):
         # Optimize the model to minimize this loss
         self.optimizer.zero_grad()
         loss.backward()
-        if self.configuration['training']:
-            self.losses.append(loss.item())
+
+        self.compute_statistics(loss.item(), self.losses_buffer, self.losses)
+
         # In-place gradient clipping
         torch.nn.utils.clip_grad_value_(self.policy_model.parameters(), 100)
         self.optimizer.step()
@@ -225,7 +237,7 @@ class DQNLearner(Controller):
         reward = self.compute_reward(simulation_step)
         self.total_reward += reward
         if simulation_step > 0:
-            self.cum_avg_rewards.append(self.total_reward / simulation_step)
+            self.compute_statistics(self.total_reward / simulation_step, self.cum_avg_rewards_buffer, self.cum_avg_rewards)
 
         if self.training and self.last_state is not None:
             self.memory_buffer.append({
@@ -239,6 +251,9 @@ class DQNLearner(Controller):
             if len(self.memory_buffer) >= self.controller_configuration['batch_size'] \
                     and simulation_step % self.controller_configuration['optimizing_rate'] == 0:
                 self.optimize(simulation_step)
+            else:
+                # Propagating last loss if loss wasn't updated
+                self.compute_statistics(self.losses[-1] if len(self.losses) > 0 else 0, self.losses_buffer, self.losses)
 
             if simulation_step % self.target_network_update_rate == 0 and simulation_step:
                 policy_model_state_dict = self.policy_model.state_dict()
@@ -274,16 +289,18 @@ class DQNLearner(Controller):
                 plt.show()
 
         bins = np.linspace(0, self.configuration['simulation_steps'], 1000)
-        cum_avg_rewards_binned = [sum(self.cum_avg_rewards[int(start):int(end)]) / (end - start)
-                                  for start, end in zip(bins, bins[1:])]
-        losses_binned = [sum(self.losses[int(start):int(end)]) / (end - start)
-                         for start, end in zip(bins, bins[1:])]
-        epsilons_binned = [sum(self.epsilons[int(start):int(end)]) / (end - start)
-                           for start, end in zip(bins, bins[1:])]
+        if len(self.cum_avg_rewards_buffer) < self.statistics_bin_size - 1:
+            self.cum_avg_rewards.append(sum(self.cum_avg_rewards_buffer) / (len(self.cum_avg_rewards_buffer) or 1))
+
+        if len(self.losses_buffer) < self.statistics_bin_size - 1:
+            self.losses.append(sum(self.losses_buffer) / (len(self.losses_buffer) or 1))
+
+        if len(self.epsilons_buffer) < self.statistics_bin_size - 1:
+            self.epsilons.append(sum(self.losses_buffer) / (len(self.losses_buffer) or 1))
         return {
             'avg_reward': self.total_reward / self.configuration['simulation_steps'],
-            'cum_avg_rewards': cum_avg_rewards_binned,
-            'losses': losses_binned,
-            'epsilons': epsilons_binned,
+            'cum_avg_rewards': self.cum_avg_rewards,
+            'losses': self.losses,
+            'epsilons': self.epsilons,
             'step_bins': bins[:-1].tolist()
         }
