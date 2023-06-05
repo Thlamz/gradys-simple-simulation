@@ -363,6 +363,8 @@ class CampaignManager:
             await asyncio.sleep(CampaignManager.status_update_rate)
         progress_bars[0].n = sum(1 for future in permutation_futures if future.done())
         progress_bars[0].refresh()
+
+        print("\n" * (self.max_processes + 1))
         # endregion
 
     def _persist_results(self):
