@@ -29,7 +29,7 @@ if __name__ == '__main__':
         'batch_size': [128],
         'hidden_layer_size': [128],
         'num_hidden_layers': [2],
-        'target_network_update_rate': [100, 1_000, 10_000, 50_000],
+        'target_network_update_rate': [1_000, 10_000, 100_000],
         'optimizing_rate': [10]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
@@ -68,9 +68,9 @@ if __name__ == '__main__':
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
-            'training_steps': 1_000_000,
+            'training_steps': 10_000_000,
             'testing_steps': 10_000,
-            'live_testing_frequency': 100_000,
+            'live_testing_frequency': 1_000_000,
             'testing_repetitions': 5
         }
     ))
