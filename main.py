@@ -68,9 +68,9 @@ if __name__ == '__main__':
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
-            'training_steps': 10_000_000,
+            'training_steps': 100_000_000,
             'testing_steps': 10_000,
-            'live_testing_frequency': 1_000_000,
+            'live_testing_frequency': 10_000_000,
             'testing_repetitions': 5
         }
     ))
