@@ -29,7 +29,7 @@ if __name__ == '__main__':
         'batch_size': [128],
         'hidden_layer_size': [128],
         'num_hidden_layers': [2],
-        'target_network_update_rate': [1_000],
+        'target_network_update_rate': [1_000, 10_000, 100_000],
         'optimizing_rate': [10]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
@@ -64,13 +64,13 @@ if __name__ == '__main__':
             'controller': DQNLearner,
             'controller_config': controller_config_permutations,
             'state': CommunicationMobilityPacketsState,
-            'repetitions': [1, 2, 3, 4, 5]
+            'repetitions': [1, 2, 3]
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
             'training_steps': 100_000_000,
             'testing_steps': 10_000,
-            'live_testing_frequency': 10_000_000,
+            'live_testing_frequency': 100_000_000,
             'testing_repetitions': 5
         }
     ))
