@@ -29,7 +29,7 @@ if __name__ == '__main__':
         'batch_size': [128],
         'hidden_layer_size': [128],
         'num_hidden_layers': [2],
-        'target_network_update_rate': [1_000, 10_000, 100_000],
+        'target_network_update_rate': [1_000],
         'optimizing_rate': [10]
     }
     keys, values = zip(*controller_config_permutation_dict.items())
@@ -58,13 +58,13 @@ if __name__ == '__main__':
     asyncio.run(campaign_manager.run_campaign(
         {
             'num_agents': 1,
-            'mission_size': [30],
+            'mission_size': [60],
             'sensor_generation_probability': 0.1,
             'sensor_packet_lifecycle': math.inf,
             'controller': DQNLearner,
             'controller_config': controller_config_permutations,
             'state': CommunicationMobilityPacketsState,
-            'repetitions': [1, 2, 3, 4]
+            'repetitions': [1, 2, 3, 4, 5]
         },
         ['repetitions', 'mission_size', 'controller_config'],
         {
