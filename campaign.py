@@ -79,6 +79,7 @@ class SimulationRunner:
                                     * configuration['sensor_generation_probability'])
 
         self.throughputs: List[float] = []
+        self.throughput_sum = 0
         self.agent_positions: Dict[int, List[int]] = {index: [] for index in range(configuration['num_agents'])}
 
     @property
@@ -89,15 +90,19 @@ class SimulationRunner:
         print(f"Maximum possible throughput {self.max_possible_throughput}")
         print(f"Expected throughput {self.expected_throughput}")
         print(f"Simulation steps: {self.simulation.simulation_step}")
-        print(f"Average throughput: {sum(self.throughputs) / self.simulation.simulation_step}")
+        print(f"Average throughput: {self.throughput_sum / self.simulation.simulation_step}")
         print(
             f"Last throughput: {self.simulation.environment.ground_station.packets / self.simulation.simulation_step}")
 
     def _collect_statistics(self):
-        for index, agent in enumerate(self.simulation.environment.agents):
-            self.agent_positions[index].append(agent.position)
+        current_throughput = self.simulation.environment.ground_station.packets / self.simulation.simulation_step
 
-        self.throughputs.append(self.simulation.environment.ground_station.packets / self.simulation.simulation_step)
+        if self.configuration['plots']:
+            for index, agent in enumerate(self.simulation.environment.agents):
+                self.agent_positions[index].append(agent.position)
+            self.throughputs.append(current_throughput)
+
+        self.throughput_sum += current_throughput
 
     def _log_step(self):
         print("---------------------")
@@ -125,6 +130,9 @@ class SimulationRunner:
 
     def finalize(self) -> SimulationResults:
         controller_results = self.simulation.controller.finalize()
+
+        if self.configuration['plots']:
+            self.plot_results()
 
         return {
             'max_possible_throughput': self.max_possible_throughput,
