@@ -38,7 +38,7 @@ if __name__ == '__main__':
     asyncio.run(campaign_manager.run_campaign(
         {
             'num_agents': [2],
-            'mission_size': [10],
+            'mission_size': [30],
             'sensor_generation_probability': 0.1,
             'sensor_packet_lifecycle': math.inf,
             'controller': DQNLearner,
