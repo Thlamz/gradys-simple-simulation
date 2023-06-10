@@ -44,15 +44,14 @@ if __name__ == '__main__':
             'controller': DQNLearner,
             'controller_config': controller_config_permutations,
             'state': CommunicationMobilityPacketsState,
-            'repetitions': [1],
-            'plots': True
+            'repetitions': [1, 2, 3]
         },
         ['repetitions', 'mission_size', 'num_agents', 'controller_config'],
         {
             'training_steps': 10_000_000,
             'testing_steps': 10_000,
-            'live_testing_frequency': 10_000_000,
-            'testing_repetitions': 1
+            'live_testing_frequency': 1_000_000,
+            'testing_repetitions': 5
         }
     ))
 
