@@ -289,6 +289,8 @@ class DQNLearner(Controller):
                 plt.show()
 
         bins = np.linspace(0, self.configuration['simulation_steps'], 1000)
+
+        # Adding any remaining data in buffer to the statistic
         if len(self.cum_avg_rewards_buffer) < self.statistics_bin_size - 1:
             self.cum_avg_rewards.append(sum(self.cum_avg_rewards_buffer) / (len(self.cum_avg_rewards_buffer) or 1))
 
