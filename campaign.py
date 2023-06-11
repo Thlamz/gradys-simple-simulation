@@ -137,7 +137,7 @@ class SimulationRunner:
         return {
             'max_possible_throughput': self.max_possible_throughput,
             'expected_throughput': self.expected_throughput,
-            'avg_throughput': sum(self.throughputs) / self.simulation.simulation_step,
+            'avg_throughput': self.throughput_sum / self.simulation.simulation_step,
             'controller': controller_results
         }
 
