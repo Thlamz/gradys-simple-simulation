@@ -171,7 +171,9 @@ class QLearning(Controller):
         self.last_q_value = self.controller_configuration['qtable_initialization_value']
         self.total_reward = 0
         self.cum_avg_rewards = []
+        self.cum_avg_rewards_buffer = []
         self.epsilons = []
+        self.epsilons_buffer = []
 
         self.epsilon_start = self.controller_configuration['epsilon_start']
         self.epsilon_end = self.controller_configuration['epsilon_end']
@@ -186,8 +188,7 @@ class QLearning(Controller):
         else:
             self.epsilon *= (self.epsilon_end / self.epsilon_start) ** (1 / self.epsilon_horizon)
 
-        if self.configuration['plots']:
-            self.epsilons.append(self.epsilon)
+        self.compute_statistics(self.epsilon, self.epsilons_buffer, self.epsilons)
 
     def compute_reward(self, simulation_step):
         return self.controller_configuration['reward_function'](self, simulation_step)
@@ -195,8 +196,7 @@ class QLearning(Controller):
     def get_control(self, simulation_step: int, current_state: State, current_control: Control) -> Control:
         reward = self.compute_reward(simulation_step)
         self.total_reward += reward
-        if simulation_step > 0 and self.configuration['plots']:
-            self.cum_avg_rewards.append(self.total_reward / simulation_step)
+        self.compute_statistics(self.total_reward / simulation_step, self.cum_avg_rewards_buffer, self.cum_avg_rewards)
 
         if self.training and self.last_state is not None:
             next_state_optimal_control = self.q_table.get_optimal_control(current_state)
@@ -231,5 +231,8 @@ class QLearning(Controller):
         if self.training:
             self.q_table.export_qtable()
         return {
-            'avg_reward': self.total_reward / self.configuration['simulation_steps']
+            'avg_reward': self.total_reward / self.configuration['simulation_steps'],
+            'cum_avg_rewards': self.finalize_statistics(self.cum_avg_rewards_buffer, self.cum_avg_rewards),
+            'epsilons': self.finalize_statistics(self.epsilons_buffer, self.epsilons),
+            'bins': self.bins
         }

@@ -35,10 +35,14 @@ class DQLearnerParameters(TypedDict):
     num_hidden_layers: int
     hidden_layer_size: int
 
+class DadcaParameters(TypedDict):
+    # Only used for statistic collection
+    reward_function: Callable
+
 
 class SimulationConfiguration(TypedDict):
     controller: object
-    controller_config: Union[QLearningParameters, DQLearnerParameters]
+    controller_config: Union[QLearningParameters, DQLearnerParameters, DadcaParameters]
     model_file: Union[Path, None]
 
     # State parameters

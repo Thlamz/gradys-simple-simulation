@@ -171,17 +171,9 @@ class DQNLearner(Controller):
         self.epsilons = []
         self.epsilons_buffer = []
 
-        self.statistics_bin_size = self.configuration['simulation_steps'] // 1000
-
         # Control variables. These store the last state and control visited in the simulation
         self.last_state: Optional[State] = None
         self.last_control: Optional[Control] = None
-
-    def compute_statistics(self, value, buffer: List, statistic: List):
-        buffer.append(value)
-        if len(buffer) >= self.statistics_bin_size:
-            statistic.append(sum(buffer) / len(buffer))
-            buffer.clear()
 
     def decay_epsilon(self) -> None:
         if self.epsilon <= self.epsilon_end:
@@ -288,21 +280,10 @@ class DQNLearner(Controller):
                 sns.lineplot(data=self.losses).set(title="Loss")
                 plt.show()
 
-        bins = np.linspace(0, self.configuration['simulation_steps'], 1000)
-
-        # Adding any remaining data in buffer to the statistic
-        if len(self.cum_avg_rewards_buffer) < self.statistics_bin_size - 1:
-            self.cum_avg_rewards.append(sum(self.cum_avg_rewards_buffer) / (len(self.cum_avg_rewards_buffer) or 1))
-
-        if len(self.losses_buffer) < self.statistics_bin_size - 1:
-            self.losses.append(sum(self.losses_buffer) / (len(self.losses_buffer) or 1))
-
-        if len(self.epsilons_buffer) < self.statistics_bin_size - 1:
-            self.epsilons.append(sum(self.losses_buffer) / (len(self.losses_buffer) or 1))
         return {
             'avg_reward': self.total_reward / self.configuration['simulation_steps'],
-            'cum_avg_rewards': self.cum_avg_rewards,
-            'losses': self.losses,
-            'epsilons': self.epsilons,
-            'step_bins': bins[:-1].tolist()
+            'cum_avg_rewards': self.finalize_statistics(self.cum_avg_rewards_buffer, self.cum_avg_rewards),
+            'losses': self.finalize_statistics(self.losses_buffer, self.losses),
+            'epsilons': self.finalize_statistics(self.epsilons_buffer, self.epsilons),
+            'step_bins': self.bins
         }

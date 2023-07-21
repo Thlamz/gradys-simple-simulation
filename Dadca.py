@@ -27,13 +27,24 @@ class Dadca(Controller):
         super().__init__(configuration, environment)
         self.agent_neighbours = [[0, 0] for _ in range(self.configuration['num_agents'])]
         self.agent_commands = {}
+        self.compute_reward = configuration['controller_config']['reward_function']
+
+        self.statistics_bin_size = self.configuration['simulation_steps'] // 1000
+        self.cum_avg_rewards = []
+        self.cum_avg_rewards_buffer = []
+        self.total_reward = 0
 
     def get_control(self, simulation_step: int, current_state: State, current_control: Optional[Control]) -> Control:
+        reward = self.compute_reward(self, simulation_step)
+        self.total_reward += reward
+        if simulation_step > 0:
+            self.compute_statistics(self.total_reward / simulation_step, self.cum_avg_rewards_buffer, self.cum_avg_rewards)
+
         if current_control is not None:
             new_mobility_commands = list(current_control.mobility)
         else:
             mobility = [MobilityCommand.FORWARDS for _ in range(self.configuration['num_agents'])]
-            current_control = Control(tuple(mobility), self.configuration)
+            current_control = Control(tuple(mobility))
             new_mobility_commands = mobility.copy()
 
         combination: Tuple[Tuple[int, Agent], Tuple[int, Agent]]
@@ -91,4 +102,10 @@ class Dadca(Controller):
             elif agent.position == self.configuration['mission_size'] - 1:
                 new_mobility_commands[index] = MobilityCommand.REVERSE
 
-        return Control(tuple(new_mobility_commands), self.configuration)
+        return Control(tuple(new_mobility_commands))
+
+    def finalize(self) -> dict:
+        return {
+            'avg_reward': self.total_reward / self.configuration['simulation_steps'],
+            'cum_avg_rewards': self.finalize_statistics(self.cum_avg_rewards_buffer, self.cum_avg_rewards)
+        }
