@@ -10,9 +10,10 @@ import sys
 from concurrent.futures import Executor
 from functools import reduce
 from inspect import isfunction
+from multiprocessing import Process
 from pathlib import Path
 from queue import Full
-from time import time
+from time import time, sleep
 from typing import List, Tuple, Dict, TypedDict
 
 from tqdm.autonotebook import tqdm
@@ -175,7 +176,7 @@ class CampaignManager:
         total: int
         description: str
 
-    shared_dict: Dict[int, CampaignSimulationStatus]
+    process_dict: Dict[int, CampaignSimulationStatus]
     """ Dictionary containing the status of each working process in the pool """
 
     status_update_rate: int = 1
@@ -186,8 +187,62 @@ class CampaignManager:
         self.max_processes = max_processes
         self.process_ids = []
         self.process_manager = multiprocessing.Manager()
-        self.shared_dict = self.process_manager.dict()
+        self.process_dict: Dict[int, CampaignManager.CampaignSimulationStatus] = self.process_manager.dict()
+        self.permutation_dict: Dict[int, bool] = self.process_manager.dict()
         self.result_file = file
+
+    @staticmethod
+    def _monitor_campaign_progress(max_processes: int,
+                                   num_permutations: int,
+                                   process_dict: Dict[int, CampaignSimulationStatus],
+                                   permutation_dict: Dict[int, bool]):
+        # Instantiating a progress bar for each process. Progress bar zero represent the main process
+        progress_bars = [tqdm(position=i + 1,
+                              bar_format='{desc:<50.50}{percentage:3.0f}%|{bar}| {n_fmt:>8}/{total_fmt:<8} [{elapsed:>5}<{remaining:<5} - {rate_fmt:15} {postfix:15}]')
+                         for i in range(max_processes + 1)]
+        progress_bars[0].set_postfix_str("Main Process")
+        for i in range(max_processes):
+            progress_bars[i + 1].set_postfix_str(f"Process {i + 1}")
+
+        # Main progress bar keeps track of finished permutations
+        progress_bars[0].total = num_permutations
+        progress_bars[0].set_description("Total campaign progress")
+
+        # Tracks the last routine being executed for each process
+        # Used to reset the tqdm progress bar when a new routine is started
+        last_routine_ids: Dict[int, int] = {}
+
+        process_ids = []
+
+        # Looping while not all permutations are done
+        while any(not status for status in permutation_dict.values()):
+            # Updating main progress bar
+            progress_bars[0].n = sum(status for status in permutation_dict.values())
+            progress_bars[0].refresh()
+
+            # Checking message queue for updates from the processes
+            for process, status in process_dict.items():
+                if process not in process_ids:
+                    process_ids.append(process)
+
+                bar_index = process_ids.index(process) + 1
+
+                # Resetting progress bar when a new routine is started
+                if process not in last_routine_ids or status['routine_id'] != last_routine_ids[process]:
+                    progress_bars[bar_index].start_t = time()
+                    progress_bars[bar_index].total = status['total']
+                    progress_bars[bar_index].set_description(status['description'])
+
+                    last_routine_ids[process] = status['routine_id']
+
+                progress_bars[bar_index].n = status['step']
+                progress_bars[bar_index].refresh()
+
+            sleep(CampaignManager.status_update_rate)
+        progress_bars[0].n = num_permutations
+        progress_bars[0].refresh()
+
+        print("\n" * (max_processes + 1))
 
     @staticmethod
     def _run_partial_simulation(simulation: SimulationRunner,
@@ -249,7 +304,7 @@ class CampaignManager:
                                               training_simulation,
                                               num_steps,
                                               f'Permutation {index} - Training ({steps}-{steps + num_steps}/{configuration["training_steps"]})',
-                                              self.shared_dict)
+                                              self.process_dict)
             training_simulation = await asyncio.wrap_future(future)
             steps += num_steps
 
@@ -263,16 +318,16 @@ class CampaignManager:
                                                   testing_simulation,
                                                   configuration['testing_steps'],
                                                   f'Permutation {index} - Testing ({steps}/{configuration["training_steps"]})',
-                                                  self.shared_dict)
+                                                  self.process_dict)
                 test_futures.append(asyncio.wrap_future(future))
 
             testing_simulations = await asyncio.gather(*test_futures)
             self.results.extend({
-                'simulation_config': test_config,
-                'campaign_config': configuration,
-                'simulation_results': testing_simulation.finalize(),
-                'completed_training_steps': steps
-            } for testing_simulation in testing_simulations)
+                                    'simulation_config': test_config,
+                                    'campaign_config': configuration,
+                                    'simulation_results': testing_simulation.finalize(),
+                                    'completed_training_steps': steps
+                                } for testing_simulation in testing_simulations)
             self._persist_results()
 
         training_results = training_simulation.finalize()
@@ -283,6 +338,7 @@ class CampaignManager:
             'simulation_results': training_results,
             'completed_training_steps': configuration['training_steps']
         })
+        self.permutation_dict[index] = True
         self._persist_results()
 
     async def run_campaign(self,
@@ -319,61 +375,25 @@ class CampaignManager:
         loop = asyncio.get_running_loop()
         permutation_futures: List[asyncio.Future] = []
         for index, permutation in enumerate(mapped_permutations):
+            self.permutation_dict[index] = False
             future = loop.create_task(self._run_permutation((index, permutation), campaign_configuration))
             permutation_futures.append(future)
         # endregion
 
-        # region Monitoring processes
+        # Starting monitoring process
+        monitoring_process = Process(target=CampaignManager._monitor_campaign_progress, args=(self.max_processes,
+                                                                                              num_permutations,
+                                                                                              self.process_dict,
+                                                                                              self.permutation_dict))
+        monitoring_process.start()
+        await asyncio.wait(permutation_futures, return_when=asyncio.FIRST_EXCEPTION)
 
-        # Instantiating a progress bar for each process. Progress bar zero represent the main process
-        progress_bars = [tqdm(position=i + 1, bar_format='{desc:<50.50}{percentage:3.0f}%|{bar}| {n_fmt:>8}/{total_fmt:<8} [{elapsed:>5}<{remaining:<5} - {rate_fmt:15} {postfix:15}]') for i in range(self.max_processes + 1)]
-        progress_bars[0].set_postfix_str("Main Process")
-        for i in range(self.max_processes):
-            progress_bars[i + 1].set_postfix_str(f"Process {i + 1}")
+        for future in permutation_futures:
+            if future.exception():
+                monitoring_process.kill()
+                raise future.exception()
 
-        # Main progress bar keeps track of finished permutations
-        progress_bars[0].total = num_permutations
-        progress_bars[0].set_description("Total campaign progress")
-
-        # Tracks the last routine being executed for each process
-        # Used to reset the tqdm progress bar when a new routine is started
-        last_routine_ids: Dict[int, int] = {}
-
-        # Looping while not all permutations are done
-        while any(not future.done() for future in permutation_futures):
-            # Stopping campaign early if any exception is raised
-            for future in permutation_futures:
-                if future.done() and (exc := future.exception()) is not None:
-                    raise exc
-
-            # Updating main progress bar
-            progress_bars[0].n = sum(1 for future in permutation_futures if future.done())
-            progress_bars[0].refresh()
-
-            # Checking message queue for updates from the processes
-            for process, status in self.shared_dict.items():
-                if process not in self.process_ids:
-                    self.process_ids.append(process)
-
-                bar_index = self.process_ids.index(process) + 1
-
-                # Resetting progress bar when a new routine is started
-                if process not in last_routine_ids or status['routine_id'] != last_routine_ids[process]:
-                    progress_bars[bar_index].start_t = time()
-                    progress_bars[bar_index].total = status['total']
-                    progress_bars[bar_index].set_description(status['description'])
-
-                    last_routine_ids[process] = status['routine_id']
-
-                progress_bars[bar_index].n = status['step']
-                progress_bars[bar_index].refresh()
-
-            await asyncio.sleep(CampaignManager.status_update_rate)
-        progress_bars[0].n = sum(1 for future in permutation_futures if future.done())
-        progress_bars[0].refresh()
-
-        print("\n" * (self.max_processes + 1))
-        # endregion
+        print("-------- Campaign ended --------\n")
 
     def _persist_results(self):
         with self.result_file.open("w") as file:
