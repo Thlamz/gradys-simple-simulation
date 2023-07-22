@@ -9,6 +9,8 @@ class CampaignConfiguration(TypedDict):
     testing_steps: int
     live_testing_frequency: Optional[int]
     testing_repetitions: int
+    concurrent_simulations: bool
+    concurrent_testing: bool
 
 
 class CampaignResults(TypedDict):

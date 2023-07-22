@@ -57,35 +57,34 @@ if __name__ == '__main__':
     #     }
     # ))
 
-    for num_agents in [1, 2, 4]:
-        for mission_size in [10, 20, 40]:
-            for repetition in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-                asyncio.run(campaign_manager.run_campaign(
-                    {
-                        'num_agents': [num_agents],
-                        'mission_size': [mission_size],
-                        'sensor_generation_probability': 0.1,
-                        'sensor_packet_lifecycle': math.inf,
-                        'controller': QLearning,
-                        'controller_config': {
-                            'epsilon_start': 1.,
-                            'epsilon_end': 0.001,
-                            'learning_rate': 0.9,
-                            'gamma': 0.99,
-                            'reward_function': unique_packets,
-                            'qtable_initialization_value': 0,
-                            'qtable_format': SparseQTable
-                        },
-                        'state': CommunicationMobilityPacketsState,
-                        'repetitions': [repetition],
-                    },
-                    ['repetitions', 'mission_size', 'num_agents'],
-                    {
-                        'training_steps': 1_000_000,
-                        'testing_steps': 10_000,
-                        'live_testing_frequency': 100_000,
-                        'testing_repetitions': 5
-                    }
-                ))
+    asyncio.run(campaign_manager.run_campaign(
+        {
+            'num_agents': [1, 2, 4],
+            'mission_size': [10, 20, 40],
+            'sensor_generation_probability': 0.1,
+            'sensor_packet_lifecycle': math.inf,
+            'controller': QLearning,
+            'controller_config': {
+                'epsilon_start': 1.,
+                'epsilon_end': 0.001,
+                'learning_rate': 0.9,
+                'gamma': 0.99,
+                'reward_function': unique_packets,
+                'qtable_initialization_value': 0,
+                'qtable_format': SparseQTable
+            },
+            'state': CommunicationMobilityPacketsState,
+            'repetitions': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
+        ['repetitions', 'mission_size', 'num_agents'],
+        {
+            'training_steps': 1_000_000,
+            'testing_steps': 10_000,
+            'live_testing_frequency': 100_000,
+            'testing_repetitions': 5,
+            'concurrent_simulations': False,
+            'concurrent_testing': False
+        }
+    ))
 
     campaign_manager.finalize()
