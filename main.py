@@ -6,13 +6,14 @@ from pathlib import Path
 
 from DQNLearner import DQNLearner
 from QLearning import SparseQTable, QLearning
+from Dadca import Dadca
 from campaign import CampaignManager
 from rewards import smooth_unique_packets, unique_packets
 from state import CommunicationMobilityPacketsState
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-                        prog='Gradys Simple Simulation')
+        prog='Gradys Simple Simulation')
     parser.add_argument('--max_processes', required=False, default=multiprocessing.cpu_count(), type=int)
 
     args = parser.parse_args()
@@ -58,7 +59,7 @@ if __name__ == '__main__':
 
     for num_agents in [1, 2, 4]:
         for mission_size in [10, 20, 40]:
-            for repetition in [1, 2, 3]:
+            for repetition in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
                 asyncio.run(campaign_manager.run_campaign(
                     {
                         'num_agents': [num_agents],

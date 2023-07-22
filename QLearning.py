@@ -196,7 +196,8 @@ class QLearning(Controller):
     def get_control(self, simulation_step: int, current_state: State, current_control: Control) -> Control:
         reward = self.compute_reward(simulation_step)
         self.total_reward += reward
-        self.compute_statistics(self.total_reward / simulation_step, self.cum_avg_rewards_buffer, self.cum_avg_rewards)
+        if simulation_step > 0:
+            self.compute_statistics(self.total_reward / simulation_step, self.cum_avg_rewards_buffer, self.cum_avg_rewards)
 
         if self.training and self.last_state is not None:
             next_state_optimal_control = self.q_table.get_optimal_control(current_state)
