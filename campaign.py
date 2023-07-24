@@ -312,6 +312,7 @@ class CampaignManager:
             training_simulation.simulation.controller.finalize()
 
             test_futures = []
+            test_results = []
             for i in range(configuration['testing_repetitions']):
                 testing_simulation = SimulationRunner(test_config)
                 future = self.process_pool.submit(CampaignManager._run_partial_simulation,
@@ -321,17 +322,19 @@ class CampaignManager:
                                                   self.process_dict)
 
                 if not configuration['concurrent_testing']:
-                    await asyncio.wrap_future(future)
+                    simulation = await asyncio.wrap_future(future)
+                    test_results.append(simulation.finalize())
+                else:
+                    test_futures.append(asyncio.wrap_future(future))
 
-                test_futures.append(asyncio.wrap_future(future))
-
-            testing_simulations = await asyncio.gather(*test_futures)
+            if configuration['concurrent_testing']:
+                test_results = [simulation.finalize() for simulation in (await asyncio.gather(*test_futures))]
             self.results.extend({
                                     'simulation_config': test_config,
                                     'campaign_config': configuration,
-                                    'simulation_results': testing_simulation.finalize(),
+                                    'simulation_results': result,
                                     'completed_training_steps': steps
-                                } for testing_simulation in testing_simulations)
+                                } for result in test_results)
             self._persist_results()
 
         training_results = training_simulation.finalize()
