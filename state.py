@@ -205,7 +205,7 @@ class CommunicationMobilityPacketsState(State):
         return self.mobility == other.mobility and self.packets == other.packets and self.communication == other.communication
 
     def serialize(self) -> str:
-        return json.dumps([self.mobility, self.packets, self.communication])
+        return json.dumps([5])
 
     def to_tensor(self) -> torch.Tensor:
         return torch.tensor(self.mobility + self.packets + self.communication, dtype=torch.float32, device=device).unsqueeze(0)

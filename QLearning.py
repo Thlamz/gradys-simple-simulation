@@ -79,7 +79,7 @@ class SparseQTable(QTable):
 
     def get_q_value(self, state: State, control: Control) -> float:
         try:
-            return self.q_table[state.serialize()][control.serialize()]
+            return self.q_table[state][control]
         except KeyError:
             return self.configuration['controller_config']['qtable_initialization_value']
 
@@ -88,22 +88,22 @@ class SparseQTable(QTable):
             optimal_control: Optional[Control] = None
             optimal_q_value = -math.inf
 
-            for control, q_value in self.q_table[state.serialize()].items():
+            for control, q_value in self.q_table[state].items():
                 if q_value > optimal_q_value:
                     optimal_control = control
                     optimal_q_value = q_value
             if optimal_control is not None:
-                return Control.deserialize(optimal_control)
+                return optimal_control
         except KeyError:
             return generate_random_control(self.configuration, self.environment)
 
     def set_q_value(self, state: State, control: Control, q_value: float):
         # Optimization: Raising exception is faster than checking is the key exists at every call
         try:
-            self.q_table[state.serialize()][control.serialize()] = q_value
+            self.q_table[state][control] = q_value
         except KeyError:
-            self.q_table[state.serialize()] = {}
-            self.q_table[state.serialize()][control.serialize()] = q_value
+            self.q_table[state] = {}
+            self.q_table[state][control] = q_value
 
     def export_qtable(self):
         if self.configuration['model_file'] is not None:
