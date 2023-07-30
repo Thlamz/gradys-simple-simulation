@@ -59,7 +59,7 @@ def get_default_configuration() -> SimulationConfiguration:
         'num_agents': 2,
         'sensor_generation_frequency': 3,
         'sensor_generation_probability': 0.6,
-        'sensor_packet_lifecycle': math.inf,
+        'sensor_packet_lifecycle': 12,
         'simulation_steps': 100_000,
         'training': True,
         'step_by_step': False,
@@ -109,7 +109,7 @@ class SimulationRunner:
         print("---------------------")
         print(f"Ground Station: {self.simulation.environment.ground_station.packets}")
         print(
-            f"Sensors: [{', '.join(str(sensor.count_update_packets(self.simulation.simulation_step)) for sensor in self.simulation.environment.sensors)}]")
+            f"Sensors: [{', '.join(str(sensor.count_update_packets(self.simulation.simulation_step, self.configuration['sensor_packet_lifecycle'])) for sensor in self.simulation.environment.sensors)}]")
         agent_string = ""
         for i in range(self.configuration['mission_size']):
             agent_string += "-("
@@ -127,7 +127,6 @@ class SimulationRunner:
 
         if self.configuration['step_by_step']:
             self._log_step()
-            input("")
         return True
 
     def finalize(self) -> SimulationResults:
@@ -285,7 +284,7 @@ class CampaignManager:
         """
         index, permutation = argument
 
-        permutation_results_path = None
+        permutation_results_path = Path(f"./{index}.json")
         config: SimulationConfiguration = {**get_default_configuration(), **permutation,
                                            'model_file': permutation_results_path, 'verbose': False}
 
@@ -316,7 +315,6 @@ class CampaignManager:
             test_results = []
             for i in range(configuration['testing_repetitions']):
                 testing_simulation = SimulationRunner(test_config)
-                testing_simulation.simulation.controller.q_table = training_simulation.simulation.controller.q_table
                 future = self.process_pool.submit(CampaignManager._run_partial_simulation,
                                                   testing_simulation,
                                                   configuration['testing_steps'],
@@ -328,7 +326,6 @@ class CampaignManager:
                     test_results.append(simulation.finalize())
                 else:
                     test_futures.append(asyncio.wrap_future(future))
-                del testing_simulation
 
             if configuration['concurrent_testing']:
                 test_results = [simulation.finalize() for simulation in (await asyncio.gather(*test_futures))]
@@ -395,20 +392,19 @@ class CampaignManager:
         monitoring_process.start()
 
         for index, permutation in enumerate(mapped_permutations):
-            await self._run_permutation((index, permutation), campaign_configuration)
-            #future = loop.create_task()
-        #     permutation_futures.append(future)
-        #
-        #     if not campaign_configuration['concurrent_simulations'] \
-        #             and len([future for future in permutation_futures if not future.done()]) >= self.max_processes:
-        #         await asyncio.wait(permutation_futures, return_when=asyncio.FIRST_EXCEPTION)
-        #
-        #     for future in permutation_futures:
-        #         if future.done() and future.exception() is not None:
-        #             monitoring_process.kill()
-        #             raise future.exception()
-        #
-        # await asyncio.wait(permutation_futures, return_when=asyncio.FIRST_EXCEPTION)
+            future = loop.create_task(self._run_permutation((index, permutation), campaign_configuration))
+            permutation_futures.append(future)
+
+            if not campaign_configuration['concurrent_simulations'] \
+                    and len([future for future in permutation_futures if not future.done()]) >= self.max_processes:
+                await asyncio.wait(permutation_futures, return_when=asyncio.FIRST_EXCEPTION)
+
+            for future in permutation_futures:
+                if future.done() and future.exception() is not None:
+                    monitoring_process.kill()
+                    raise future.exception()
+
+        await asyncio.wait(permutation_futures, return_when=asyncio.FIRST_EXCEPTION)
         # endregion
 
         print("-------- Campaign ended --------\n")

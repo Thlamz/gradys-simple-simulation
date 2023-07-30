@@ -7,7 +7,7 @@ from pathlib import Path
 from DQNLearner import DQNLearner
 from QLearning import SparseQTable, QLearning
 from Dadca import Dadca
-from campaign import CampaignManager, SimulationRunner, get_default_configuration
+from campaign import CampaignManager
 from rewards import smooth_unique_packets, unique_packets
 from state import CommunicationMobilityPacketsState
 
@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    campaign_manager = CampaignManager(Path("analysis/Dadca/results_n.json"), max_processes=args.max_processes)
+    campaign_manager = CampaignManager(Path("analysis/results.json"), max_processes=args.max_processes)
 
     # controller_config_permutation_dict = {
     #     'reward_function': [unique_packets],
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     #         'testing_repetitions': 1
     #     }
     # ))
-    #
+
     asyncio.run(campaign_manager.run_campaign(
         {
             'num_agents': [1, 2, 4],
@@ -74,7 +74,7 @@ if __name__ == '__main__':
                 'qtable_format': SparseQTable
             },
             'state': CommunicationMobilityPacketsState,
-            'repetitions': [1, 2, 3, 4, 5],
+            'repetitions': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         },
         ['repetitions', 'mission_size', 'num_agents'],
         {
