@@ -63,15 +63,19 @@ if __name__ == '__main__':
             'mission_size': [10, 20, 40],
             'sensor_generation_probability': 0.1,
             'sensor_packet_lifecycle': math.inf,
-            'controller': QLearning,
+            'controller': DQNLearner,
             'controller_config': {
-                'epsilon_start': 1.,
-                'epsilon_end': 0.001,
-                'learning_rate': 0.9,
-                'gamma': 0.99,
                 'reward_function': unique_packets,
-                'qtable_initialization_value': 0,
-                'qtable_format': SparseQTable
+                'epsilon_start': 1,
+                'epsilon_end': 0.1,
+                'learning_rate': 0.0005,
+                'gamma': 0.99,
+                'memory_size': 10_000,
+                'batch_size': 128,
+                'hidden_layer_size': 128,
+                'num_hidden_layers': 2,
+                'target_network_update_rate': 10_000,
+                'optimizing_rate': 10
             },
             'state': CommunicationMobilityPacketsState,
             'repetitions': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -82,8 +86,8 @@ if __name__ == '__main__':
             'testing_steps': 10_000,
             'live_testing_frequency': 100_000,
             'testing_repetitions': 5,
-            'concurrent_simulations': False,
-            'concurrent_testing': False
+            'concurrent_simulations': True,
+            'concurrent_testing': True
         }
     ))
 
